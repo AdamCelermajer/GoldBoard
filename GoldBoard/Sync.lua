@@ -1,7 +1,6 @@
 -- What the dashboard gets from the game besides the ledger (it reads GoldBoardDB after a /reload or logout):
 --   auctionator : Auctionator's own daily price history (lowest and highest seen, how many were up, per day)
 --                 for the items the dashboard tracks or you trade, so its charts reach back before Gold Board
---   groups      : your groups and their pricing rules (GoldBoardDB.groups, already saved as they are)
 -- And the other way: the dashboard writes SignalsData.lua, read at login (Signals.lua).
 
 local _, GB = ...
@@ -15,11 +14,10 @@ function S.ExportAuctionator()
   if type(db) ~= "table" then return end
   local day0 = Auctionator.Constants and Auctionator.Constants.SCAN_DAY_0
   if not day0 then return end
-  -- which items: everything with a Gold Board signal, plus what you traded or grouped
+  -- which items: everything with a Gold Board signal, plus what you traded
   local want = {}
   for id in pairs(GB.Signals.All()) do want[id] = true end
   for _, e in ipairs(GB.db.ledger) do if e.itemID then want[e.itemID] = true end end
-  for _, g in pairs(GB.Groups.All()) do for id in pairs(g.items) do want[id] = true end end
   local items, n = {}, 0
   for id in pairs(want) do
     local d = db[tostring(id)]

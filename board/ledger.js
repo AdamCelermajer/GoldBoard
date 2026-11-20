@@ -25,7 +25,6 @@ function ingest(log = () => {}) {
   const gold = readJson(GOLD, {});
   let newEntries = 0, newScans = 0;
   const holdings = {}, names = {};
-  let groups = null;
   const auctionator = readJson(path.join(DIR, "auctionator.json"), { items: {} });
   for (const file of files) {
     let db;
@@ -53,7 +52,6 @@ function ingest(log = () => {}) {
       newScans++;
     }
     Object.assign(holdings, db.holdings || {});
-    if (db.groups) groups = db.groups;
     // Auctionator's daily lows and highs, merged by day (Auctionator itself only keeps recent days)
     const a = db.auctionator;
     if (a && a.items && a.day0) {
@@ -75,7 +73,6 @@ function ingest(log = () => {}) {
   fs.writeFileSync(GOLD, JSON.stringify(gold));
   fs.writeFileSync(path.join(DIR, "holdings.json"), JSON.stringify(holdings));
   fs.writeFileSync(path.join(DIR, "names.json"), JSON.stringify(names));
-  if (groups) fs.writeFileSync(path.join(DIR, "groups.json"), JSON.stringify(groups));
   fs.writeFileSync(path.join(DIR, "auctionator.json"), JSON.stringify(auctionator));
   if (newEntries || newScans) log(`goldboard: ${newEntries} new ledger entries, ${newScans} new scans from the game`);
   return { found: true, newEntries, newScans };
@@ -102,7 +99,6 @@ const load = () => ({
   gold: readJson(GOLD, {}),
   holdings: readJson(path.join(DIR, "holdings.json"), {}),
   names: readJson(path.join(DIR, "names.json"), {}),
-  groups: readJson(path.join(DIR, "groups.json"), {}),
   auctionator: readJson(path.join(DIR, "auctionator.json"), { items: {} }),
 });
 

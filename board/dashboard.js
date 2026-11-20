@@ -110,7 +110,7 @@ function buildDashboard(state) {
       .sort((a, b) => a[0] - b[0]);
   }
   const data = { generatedAt: Date.now(), status, names, region, realms, ledger: game.ledger, gold: game.gold,
-                 holdings: game.holdings, myScans, groups: game.groups, auctionator };
+                 holdings: game.holdings, myScans, auctionator };
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
   const html = fs.readFileSync(path.join(ROOT, "dashboard.template.html"), "utf8").replace("/*__DATA__*/null", json);
   fs.writeFileSync(OUT, html);
@@ -144,12 +144,41 @@ function buildSignals(realms, region, ledger) {
       const minBuy = latest[1] || 0;
       const then = R.minB[id] ? R.minB[id][back] : null;
       const trend = then > 0 && minBuy > 0 ? Math.round((minBuy / then - 1) * 100) : "";
+      // timing only for items that trade often enough for an hourly pattern to mean something
+      const h = (sold || 0) >= 3 ? hourTiming(R.minB[id], R.times) : null;
       items[id] = [Math.round(sell), Math.round(sell * (1 - AH_CUT) * 0.85), latest[0] || 0, minBuy, trend,
-                   sold == null ? "" : Math.round(sold * 10) / 10].join(":");
+                   sold == null ? "" : Math.round(sold * 10) / 10, h ? h.buyHour : "", h ? h.sellHour : "",
+                   h ? h.spread : ""].join(":");
     }
     out[ah] = { t: R.t, label: R.label, items };
   }
   return out;
+}
+
+// When an item is usually cheapest (buy) and dearest (sell), in local hours, from its cheapest listing at
+// each TSM update compared with its own median; spread = how much dearer the dear hour is, in %.
+// Only once there's enough history (8+ updates covering 5+ different hours) and a real difference.
+function hourTiming(series, times) {
+  if (!series) return null;
+  const vals = series.filter((v) => v > 0).sort((a, b) => a - b);
+  if (vals.length < 8) return null;
+  const med = vals[vals.length >> 1];
+  const sum = {}, n = {};
+  series.forEach((v, k) => {
+    if (!(v > 0)) return;
+    const h = new Date(times[k] * 60000).getHours();
+    sum[h] = (sum[h] || 0) + Math.log(v / med);
+    n[h] = (n[h] || 0) + 1;
+  });
+  const hours = Object.keys(n).map(Number);
+  if (hours.length < 5) return null;
+  let lo = hours[0], hi = hours[0];
+  for (const h of hours) {
+    if (sum[h] / n[h] < sum[lo] / n[lo]) lo = h;
+    if (sum[h] / n[h] > sum[hi] / n[hi]) hi = h;
+  }
+  const spread = Math.round((Math.exp(sum[hi] / n[hi] - sum[lo] / n[lo]) - 1) * 100);
+  return spread >= 3 && spread <= 60 ? { buyHour: lo, sellHour: hi, spread } : null;   // above 60% it's a stray listing, not a pattern
 }
 
 // Your own Auctionator scans per auction house: times, and for liquid or traded items a sparse series

@@ -515,7 +515,6 @@ function renderItem(id) {
       <div><dt>Buy below</dt><dd>${money(r.buyBelow)}</dd></div>
     </dl>
     <p class="verdict-line">${verdict}${sales}${hourLine}</p>
-    ${itemGroup(r.id, r.sell)}
     <div class="itemgrid">
       <section class="panel">
         <h3>Price since the collector started</h3>
@@ -585,18 +584,6 @@ function auctionatorDays(id) {
   const a = D.auctionator;
   if (!a || !a.items || (a.ah && a.ah !== S.realm)) return [];
   return a.items[id] || [];
-}
-
-// the group this item is in (Gold Board addon) and the prices its rules give
-function itemGroup(id, sell) {
-  for (const [name, g] of Object.entries(D.groups || {})) {
-    if (g.items && (g.items[id] || g.items[Number(id)])) {
-      const r = g.rules || {};
-      const p = (pc) => sell && pc ? money(sell * pc / 100) : "-";
-      return `<p class="verdict-line" style="margin-top:-14px">In your group <b>${esc(name)}</b>: posts between ${p(r.min)} and ${p(r.max)}, ${p(r.normal)} when nobody else sells it.</p>`;
-    }
-  }
-  return "";
 }
 
 // your own Auctionator scans of this item on this auction house: [[minutes, cheapest, quantity], ...]
@@ -743,17 +730,8 @@ function lineChart(el, pts, label) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${ticks}<path d="${d}" fill="none" stroke="var(--brass)" stroke-width="2.5"/></svg>`;
 }
 
-function groupsPanel() {
-  const gs = Object.entries(D.groups || {});
-  if (!gs.length) return "";
-  return `<section class="panel" style="margin-top:16px"><h3>Your groups</h3><p class="sub">Set up in game with /gb, Groups. Prices are % of what each item sells for.</p>
-    <div class="table"><table><thead><tr><th class="l">Group</th><th>Items</th><th>Minimum</th><th>Normal</th><th>Maximum</th><th>Stacks</th></tr></thead><tbody>
-    ${gs.map(([name, g]) => { const r = g.rules || {}; const n = Object.keys(g.items || {}).length; return `<tr><td class="l">${esc(name)}</td><td>${n}</td><td>${r.min ?? "-"}%</td><td>${r.normal ?? "-"}%</td><td>${r.max ?? "-"}%</td><td>${r.stacks ?? "-"} x ${r.stack ?? "-"}</td></tr>`; }).join("")}
-    </tbody></table></div></section>`;
-}
-
 function renderLedger() {
-  if (!LEDGER.length && !Object.keys(D.gold || {}).length && !Object.keys(D.groups || {}).length) {
+  if (!LEDGER.length && !Object.keys(D.gold || {}).length) {
     $("#view").innerHTML = `<h1 style="margin-bottom:6px">Ledger</h1>
       <p class="empty" style="text-align:left;max-width:72ch;padding-left:0">Nothing recorded yet. The Gold Board addon (the <b>GoldBoard</b> folder in Interface\\AddOns) records your gold, buys and sales while you play.
       This page fills in after your next /reload or logout.</p>`;
@@ -798,7 +776,6 @@ function renderLedger() {
         ${per.filter((p) => p.sold).sort((a, b) => b.realized - a.realized).map((p) => `<tr><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.bought}</td><td>${p.sold}</td><td>${money(p.cost)}</td><td>${money(p.proceeds)}</td><td class="${p.realized >= 0 ? "pos" : "neg"}">${money(p.realized, { sign: true })}</td></tr>`).join("")}
       </tbody></table></div>` : `<p class="empty">No sales recorded yet.</p>`}
     </section>
-    ${groupsPanel()}
     <section class="panel" style="margin-top:16px">
       <h3>Recent activity</h3>
       <div class="table"><table><thead><tr><th class="l">When</th><th class="l">What</th><th class="l">Item</th><th>Qty</th><th>Price</th><th class="l">Character</th></tr></thead><tbody>

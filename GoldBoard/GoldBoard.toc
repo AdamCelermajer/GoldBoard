@@ -14,9 +14,9 @@ Ledger.lua
 Scans.lua
 SignalsData.lua
 Signals.lua
-Groups.lua
-Sync.lua
+Pricing.lua
 Tooltip.lua
+Sync.lua
 AH\Query.lua
 AH\Window.lua
 UI\Main.lua

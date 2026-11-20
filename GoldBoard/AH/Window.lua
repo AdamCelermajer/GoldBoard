@@ -246,13 +246,13 @@ function W.BuySelected()
 end
 
 ---------------------------------------------------------------------------
--- Post: scan your groups, then post one item per click
+-- Sell: what in your bags sells, priced against the live listings, one post per click
 ---------------------------------------------------------------------------
 
 local function BuildPost(p)
   local v = CreateFrame("Frame", nil, p)
   v:SetAllPoints()
-  v.scan = UI.Button(v, "Scan my groups", 140, 24)
+  v.scan = UI.Button(v, "Check my bags", 140, 24)
   v.scan:SetPoint("TOPLEFT", 12, -10)
   v.status = UI.Text(v, 12, "muted", "RIGHT")
   v.status:SetPoint("TOPRIGHT", -14, -16)
@@ -260,16 +260,16 @@ local function BuildPost(p)
   v.info = UI.Text(v, 12, "muted")
   v.info:SetPoint("TOPLEFT", 14, -44)
   v.info:SetWidth(WIDTH - 28)
-  v.info:SetText("Items from your groups that are in your bags, priced by each group's rules. Make groups in /gb.")
+  v.info:SetText("What in your bags to sell now, what to hold and when to sell it. Prices undercut the cheapest seller, never under " .. GB.Pricing.DEFAULTS.floor .. "% of the usual price; Post works through \"Sell now\" first.")
   v.table = UI.Table(v, {
     { key = "name", label = "Item", width = 0, render = function(d) return UI.ItemText(d.itemID, d.name) end },
-    { key = "qty", label = "Post", width = 70, align = "RIGHT", render = function(d) return d.stacks and (d.stacks .. " x " .. d.stackSize) or "-" end },
-    { key = "unit", label = "Price each", width = 100, align = "RIGHT", render = function(d) return d.unit and UI.Money(d.unit) or "-" end },
-    { key = "state", label = "", width = 190, render = function(d)
+    { key = "have", label = "Have", width = 44, align = "RIGHT" },
+    { key = "unit", label = "Price each", width = 96, align = "RIGHT", render = function(d) return d.unit and UI.Money(d.unit) or "-" end },
+    { key = "verdict", label = "Verdict", width = 76, sortValue = function(d) return d.rank or 9 end, render = function(d)
         if d.done then return UI.Color("buy", "posted") end
-        if d.unit then return UI.Color("ink", d.reason) end
-        return UI.Color("muted", d.reason or "") end },
-  }, { sortKey = "order", sortDir = 1, onClick = function(_, d) if d.unit and not d.done then views.post.current = d; views.post.table:Select(d); W.UpdatePostButton() end end,
+        return d.verdict or UI.Color("muted", "checking") end },
+    { key = "why", label = "When / why", width = 0, sort = false, render = function(d) return UI.Color("muted", d.why or "") end },
+  }, { sortKey = "sortKey", sortDir = 1, onClick = function(_, d) if d.unit and not d.done then views.post.current = d; views.post.table:Select(d); W.UpdatePostButton() end end,
        onEnter = function(row, d) UI.ItemTooltip(row, d.itemID) end })
   v.table:SetPoint("TOPLEFT", 10, -64); v.table:SetPoint("BOTTOMRIGHT", -10, 48)
   v.post = UI.Button(v, "Post", 260, 28, "primary")
@@ -286,39 +286,52 @@ end
 function W.ScanPost()
   local v = views.post
   local bags = BagItems()
+  local rules = GB.Pricing.Rules()
   local rows, pending = {}, 0
-  for name, g in pairs(GB.Groups.All()) do
-    for itemID in pairs(g.items) do
-      local b = bags[itemID]
-      if b and b.count > (g.rules.keep or 0) then
-        local row = { itemID = itemID, name = ItemName(itemID) or ("item " .. itemID), group = name, rules = g.rules,
-                      have = b.count, reason = "searching...", order = #rows + 1 }
-        rows[#rows + 1] = row
-        pending = pending + 1
-        GB.Query.Search(itemID, row.name, function(r)
-          pending = pending - 1
-          local prices = GB.Groups.Prices(itemID, g.rules)
-          local mineLowest = r.lowestMine and (not r.lowest or r.lowestMine <= r.lowest)
-          local unit, why = GB.Groups.PostPrice(prices, g.rules, r.lowest, mineLowest)
-          row.reason = why
-          if unit then
-            unit = math.max(1, math.floor(unit))
-            local maxStack = select(8, GetItemInfo(itemID)) or 1
-            local size = math.max(1, math.min(g.rules.stack or 20, maxStack))
-            local sellable = row.have - (g.rules.keep or 0)
-            local stacks = math.min(g.rules.stacks or 5, math.floor(sellable / size))
-            if stacks < 1 then size, stacks = sellable, 1 end
-            row.unit, row.stackSize, row.stacks = unit, size, stacks
-          end
-          v.table:Refresh()
-          Status(v, pending > 0 and ("searching " .. pending .. " more...") or "scan done")
-          if pending == 0 then W.NextPost() end
-        end)
-      end
+  for itemID, b in pairs(bags) do
+    local s = GB.Signals.Get(itemID)
+    -- only what the dashboard knows sells (TSM prices and EU sales), so junk and soulbound stay out
+    if s and s.sell and (s.soldPerDay or 0) >= 0.5 then
+      local row = { itemID = itemID, name = ItemName(itemID) or ("item " .. itemID), have = b.count,
+                    reason = "searching...", value = s.sell * b.count }
+      row.sortKey = 5 * 1e12 - row.value
+      row.timing, row.timingGood = GB.Pricing.SellTiming(s)
+      rows[#rows + 1] = row
+      pending = pending + 1
+      GB.Query.Search(itemID, row.name, function(r)
+        pending = pending - 1
+        local prices = GB.Pricing.Prices(itemID)
+        local mineLowest = r.lowestMine and (not r.lowest or r.lowestMine <= r.lowest)
+        local unit, why = GB.Pricing.PostPrice(prices, r.lowest, mineLowest)
+        row.reason = why
+        -- the verdict: sell now, wait for its dear hour, or hold (being dumped / already yours cheapest)
+        if not unit then
+          if why:find("hold") then row.rank, row.verdict = 3, UI.Color("sell", "Hold")
+          else row.rank, row.verdict = 4, UI.Color("muted", "Leave") end
+          row.why = why
+        elseif row.timingGood == false then
+          row.rank, row.verdict, row.why = 2, UI.Color("brass", "Wait"), row.timing
+        else
+          row.rank, row.verdict = 1, UI.Color("buy", "Sell now")
+          row.why = row.timingGood and (why .. ", and " .. row.timing) or (row.timing and (why .. "; " .. row.timing) or why)
+        end
+        row.sortKey = row.rank * 1e12 - row.value
+        if unit then
+          unit = math.max(1, math.floor(unit))
+          local maxStack = select(8, GetItemInfo(itemID)) or 1
+          local size = math.max(1, math.min(maxStack, row.have))
+          local stacks = math.min(rules.stacks, math.floor(row.have / size))
+          if stacks < 1 then size, stacks = row.have, 1 end
+          row.unit, row.stackSize, row.stacks = unit, size, stacks
+        end
+        v.table:Refresh()
+        Status(v, pending > 0 and ("checking " .. pending .. " more...") or "check done")
+        if pending == 0 then W.NextPost() end
+      end)
     end
   end
-  v.table:SetData(rows, next(GB.Groups.All()) and "None of your group items are in your bags." or "No groups yet: open /gb, Groups, and make one.")
-  Status(v, pending > 0 and ("searching " .. pending .. " items...") or "")
+  v.table:SetData(rows, "Nothing in your bags that the Gold Board knows sells.")
+  Status(v, pending > 0 and ("checking " .. pending .. " items...") or "")
   v.current = nil
   W.UpdatePostButton()
 end
@@ -326,8 +339,9 @@ end
 function W.NextPost()
   local v = views.post
   v.current = nil
+  -- next "Sell now" (a "Wait" row is still posted if you click it)
   for _, d in ipairs(v.table.data) do
-    if d.unit and not d.done then v.current = d break end
+    if d.unit and not d.done and d.rank == 1 then v.current = d break end
   end
   v.table:Select(v.current)
   W.UpdatePostButton()
@@ -363,9 +377,10 @@ function W.PostCurrent()
   local stackPrice = d.unit * d.stackSize
   v.posting, d.started = true, 0
   W.UpdatePostButton()
-  PostAuction(stackPrice, stackPrice, d.rules.duration or 1, d.stackSize, d.stacks)
+  local duration = GB.Pricing.Rules().duration
+  PostAuction(stackPrice, stackPrice, duration, d.stackSize, d.stacks)
   GB.Ledger.Add({ kind = "post", itemID = d.itemID, name = d.name, qty = d.stackSize * d.stacks, stacks = d.stacks,
-                  stackSize = d.stackSize, price = stackPrice, unit = d.unit, duration = d.rules.duration, source = "goldboard" })
+                  stackSize = d.stackSize, price = stackPrice, unit = d.unit, duration = duration, source = "goldboard" })
   postWatch.row, postWatch.deadline = d, GetTime() + 8 + d.stacks
   postWatch:RegisterEvent("CHAT_MSG_SYSTEM")
   postWatch:RegisterEvent("AUCTION_MULTISELL_FAILURE")
@@ -417,7 +432,7 @@ local function BuildCancel(p)
   v.info = UI.Text(v, 12, "muted")
   v.info:SetPoint("TOPLEFT", 14, -44)
   v.info:SetWidth(WIDTH - 28)
-  v.info:SetText("Your auctions where someone is now cheaper. Ones with a bid, or where the cheaper price is under your group's minimum, are kept.")
+  v.info:SetText("Your auctions where someone is now cheaper. Ones with a bid, or undercut by a price far under the usual one (a dump), are kept.")
   v.table = UI.Table(v, {
     { key = "name", label = "Item", width = 0, render = function(d) return UI.ItemText(d.itemID, d.name) end },
     { key = "count", label = "Stack", width = 50, align = "RIGHT" },
@@ -462,14 +477,13 @@ ownedWait:SetScript("OnEvent", function()
     pending = pending + 1
     local function Judge(r)
       pending = pending - 1
-      local _, rules = GB.Groups.ForItem(itemID)
-      local prices = rules and GB.Groups.Prices(itemID, rules)
+      local prices = GB.Pricing.Prices(itemID)
       for _, row in ipairs(rows) do
         if row.itemID == itemID then
           row.lowest = r.lowest
           if row.bid > 0 then row.why = "has a bid: keep"
           elseif not r.lowest or r.lowest >= row.unit then row.why = "still cheapest"
-          elseif prices and r.lowest < prices.min then row.why = "undercut below your minimum: keep"
+          elseif prices and r.lowest < prices.floor then row.why = "undercut by a dump: keep"
           else row.cancel = true end
         end
       end
@@ -531,6 +545,21 @@ local function Build()
   local head = CreateFrame("Frame", nil, win)
   head:SetPoint("TOPLEFT"); head:SetPoint("TOPRIGHT")
   head:SetHeight(34)
+  win:SetMovable(true)
+  win:SetClampedToScreen(true)
+  head:EnableMouse(true)
+  head:RegisterForDrag("LeftButton")
+  head:SetScript("OnDragStart", function() win:StartMoving() end)
+  head:SetScript("OnDragStop", function() win:StopMovingOrSizing(); UI.SavePosition(win, "ahPos") end)
+  head:SetScript("OnMouseUp", function(_, button)
+    if button == "RightButton" then GB.db.settings.ahPos = nil; W.Place() end   -- dock it beside the auction house again
+  end)
+  head:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:AddLine("Drag to move. Right-click to put it back beside the auction house.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  head:SetScript("OnLeave", function() GameTooltip:Hide() end)
   local coin = head:CreateTexture(nil, "ARTWORK")
   coin:SetTexture("Interface\\MoneyFrame\\UI-GoldIcon")
   coin:SetSize(14, 14)
@@ -548,7 +577,7 @@ local function Build()
   local body = CreateFrame("Frame", nil, win)
   body:SetPoint("TOPLEFT", 0, -63); body:SetPoint("BOTTOMRIGHT")
   views.shop, views.post, views.cancel = BuildShop(body), BuildPost(body), BuildCancel(body)
-  tabs = UI.Tabs(win, { { key = "shop", label = "Shop" }, { key = "post", label = "Post" }, { key = "cancel", label = "Cancel" } }, function(key)
+  tabs = UI.Tabs(win, { { key = "shop", label = "Shop" }, { key = "post", label = "Sell" }, { key = "cancel", label = "Cancel" } }, function(key)
     for k, view in pairs(views) do view:SetShown(k == key) end
     GB.db.settings.ahTab = key
   end)
@@ -556,11 +585,16 @@ local function Build()
   tabs:SetPoint("TOPRIGHT", -8, -34)
 end
 
-local function Place()
+-- where you dragged it, or docked beside the auction house; it stays a child of the auction house so it
+-- closes with it
+function W.Place()
   win:SetParent(AuctionFrame or UIParent)
+  win:SetFrameStrata("HIGH")
+  if UI.RestorePosition(win, "ahPos") then return end
   win:ClearAllPoints()
   if AuctionFrame then win:SetPoint("TOPLEFT", AuctionFrame, "TOPRIGHT", 6, -10) else win:SetPoint("CENTER") end
 end
+local Place = W.Place
 
 function W.Toggle()
   if not win then Build() end

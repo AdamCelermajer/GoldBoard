@@ -197,8 +197,22 @@ function UI.Tabs(parent, items, onSelect)
   return bar
 end
 
+-- Where a dragged frame ends up, saved as a point on the screen; RestorePosition puts it back.
+function UI.SavePosition(f, key)
+  local point, _, rel, x, y = f:GetPoint(1)
+  if point then GB.db.settings[key] = { point, rel, x, y } end
+end
+function UI.RestorePosition(f, key)
+  local p = GB.db.settings[key]
+  if not p then return false end
+  f:ClearAllPoints()
+  f:SetPoint(p[1], UIParent, p[2], p[3], p[4])
+  return true
+end
+
 -- A movable window with a title bar and a close button. Escape closes it.
-function UI.Window(name, w, h, title)
+-- saveKey: remember where you drag it (in Gold Board's settings).
+function UI.Window(name, w, h, title, saveKey)
   local f = CreateFrame("Frame", name, UIParent)
   f:SetSize(w, h)
   f:SetPoint("CENTER")
@@ -214,7 +228,7 @@ function UI.Window(name, w, h, title)
   bar:EnableMouse(true)
   bar:RegisterForDrag("LeftButton")
   bar:SetScript("OnDragStart", function() f:StartMoving() end)
-  bar:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+  bar:SetScript("OnDragStop", function() f:StopMovingOrSizing(); if saveKey then UI.SavePosition(f, saveKey) end end)
   local coin = bar:CreateTexture(nil, "ARTWORK")
   coin:SetTexture("Interface\\MoneyFrame\\UI-GoldIcon")
   coin:SetSize(14, 14)

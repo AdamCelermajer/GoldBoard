@@ -1,5 +1,5 @@
 -- Reads the dashboard's signals (SignalsData.lua) for this realm's auction house.
--- One entry per item: "sell:buyBelow:market:minBuy:trend:soldPerDay"
+-- One entry per item: "sell:buyBelow:market:minBuy:trend:soldPerDay:buyHour:sellHour:spread"
 --   sell      what it realistically sells for (copper)
 --   buyBelow  the price under which a buy leaves room for profit
 --   market    TSM market value; minBuy the cheapest listing at the last TSM update
@@ -21,10 +21,11 @@ function S.Load()
   if type(list) ~= "table" then return end
   meta = { generated = data.generated, tsm = data.tsm and data.tsm[ah], ah = ah, label = data.labels and data.labels[ah] or ah }
   for id, s in pairs(list) do
-    local sell, below, market, minBuy, trend, sold = strsplit(":", s)
+    local sell, below, market, minBuy, trend, sold, buyHour, sellHour, spread = strsplit(":", s)
     items[tonumber(id)] = {
       sell = tonumber(sell), buyBelow = tonumber(below), market = tonumber(market),
       minBuy = tonumber(minBuy), trend = tonumber(trend), soldPerDay = tonumber(sold),
+      buyHour = tonumber(buyHour), sellHour = tonumber(sellHour), spread = tonumber(spread),
     }
   end
   meta.count = 0

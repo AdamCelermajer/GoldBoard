@@ -90,7 +90,6 @@ local function InitDB()
   db.holdings = db.holdings or {} -- [itemID] = count across characters (Syndicator), refreshed at the AH and on logout
   db.realmAH = db.realmAH or {}   -- [realm name] = TSM auction house id
   db.settings = db.settings or {}
-  if db.settings.tooltip == nil then db.settings.tooltip = true end
   GB.db = db
 end
 
@@ -147,10 +146,9 @@ ev:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 local HELP = {
-  "/gb - open the Gold Board window: overview, ledger, inventory, groups",
-  "/gb auction - show or hide the Gold Board window beside the auction house (Shop, Post, Cancel)",
+  "/gb - open the Gold Board window: overview, deals, what you hold (and when to sell it), ledger",
+  "/gb auction - show or hide the Gold Board window beside the auction house (Shop, Sell, Cancel)",
   "/gb ah <id> - the TSM auction house this realm uses (now %s), e.g. roleplay-alliance, normal-alliance",
-  "/gb tooltip - toggle the Gold Board lines in item tooltips",
   "/gb status - what has been recorded so far",
 }
 
@@ -165,9 +163,6 @@ SlashCmdList.GOLDBOARD = function(msg)
   elseif cmd == "ah" and arg ~= "" then
     GB.db.realmAH[GetRealmName() or "?"] = arg
     GB.Print("prices for " .. (GetRealmName() or "this realm") .. " now come from " .. arg .. ". /reload to load them.")
-  elseif cmd == "tooltip" then
-    GB.db.settings.tooltip = not GB.db.settings.tooltip
-    GB.Print("tooltip lines " .. (GB.db.settings.tooltip and "on" or "off") .. ".")
   elseif cmd == "status" then
     local buys, sells = 0, 0
     for _, e in ipairs(GB.db.ledger) do
