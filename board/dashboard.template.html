@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gold Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #edf2ef; --panel: #ffffff; --panel2: #f4f7f5; --line: #d3dfda; --ink: #13262e; --muted: #557079;
+  --brass: #9b6b0e; --buy: #13806b; --sell: #c24527; --gold: #a8740c; --silver: #6b7a80; --copper: #a3582a;
+  --focus: #1b6fd1;
+  --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --text: "Barlow", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f2530; --panel: #15313d; --panel2: #1b3b48; --line: #26495a; --ink: #ebe5d3; --muted: #9db3b5;
+    --brass: #d9ab4f; --buy: #5cc4ad; --sell: #ef7a5c; --gold: #e6bb52; --silver: #c9d2d6; --copper: #d08a55;
+    --focus: #8cc8ff;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f2530; --panel: #15313d; --panel2: #1b3b48; --line: #26495a; --ink: #ebe5d3; --muted: #9db3b5;
+  --brass: #d9ab4f; --buy: #5cc4ad; --sell: #ef7a5c; --gold: #e6bb52; --silver: #c9d2d6; --copper: #d08a55;
+  --focus: #8cc8ff;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--text); font-variant-numeric: tabular-nums; }
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 700px) { .wrap { padding: 0 16px; } }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-top: 10px; padding-bottom: 10px; }
+.mark { font: 700 26px/1 var(--cond); letter-spacing: .3px; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.mark .coin { width: 16px; height: 16px; }
+nav.pages { display: flex; gap: 2px; }
+nav.pages a { text-decoration: none; padding: 6px 10px; border-radius: 4px; color: var(--muted); font-weight: 500; }
+nav.pages a[aria-current="page"] { color: var(--ink); background: var(--panel2); }
+.ah { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.ah button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; color: var(--muted); }
+.ah button[aria-pressed="true"] { background: var(--brass); color: var(--bg); font-weight: 600; }
+.search { position: relative; margin-left: auto; flex: 1 1 220px; max-width: 340px; }
+.search input { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px 7px 32px; }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--muted); }
+.suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.25); list-style: none; margin: 0; padding: 4px 0; display: none; }
+.suggest.open { display: block; }
+.suggest li { padding: 6px 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--panel2); }
+.fresh { width: 100%; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--buy); }
+.dot.late { background: var(--sell); }
+
+/* money, drawn like the game does */
+.m { white-space: nowrap; }
+.m span + span { margin-left: .35em; }
+.coin { display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-left: .12em; vertical-align: .02em; box-shadow: inset 0 -1.5px 0 rgba(0,0,0,.25); }
+.coin.g { background: var(--gold); } .coin.s { background: var(--silver); } .coin.c { background: var(--copper); }
+.neg { color: var(--sell); } .pos { color: var(--buy); } .mut { color: var(--muted); }
+
+main { padding: 24px 0 64px; }
+h1, h2, h3 { font-family: var(--cond); font-weight: 600; line-height: 1.1; margin: 0; }
+h1 { font-size: 44px; } h2 { font-size: 28px; } h3 { font-size: 20px; }
+p { margin: 0; }
+
+/* board: today's best flips */
+.ledger { margin: 0 0 32px; }
+.ledger header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 10px; }
+.ledger header p { color: var(--muted); }
+.ledger ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--brass); }
+.ledger li { display: grid; grid-template-columns: 34px minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1fr) 110px; gap: 4px 18px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ledger li:hover { background: var(--panel); }
+.ledger .rank { font: 700 30px/1 var(--cond); color: var(--brass); }
+.ledger .name { font: 600 22px/1.15 var(--cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+.ledger .trade { color: var(--muted); }
+.ledger .trade b { color: var(--ink); font-weight: 600; }
+.ledger .profit { font: 700 26px/1 var(--cond); color: var(--buy); }
+.ledger .profit small { display: block; font: 400 13px/1.3 var(--text); color: var(--muted); }
+.ledger .vol { text-align: right; color: var(--muted); font-size: 14px; }
+@media (max-width: 760px) {
+  .ledger li { grid-template-columns: 28px 1fr auto; }
+  .ledger .trade { grid-column: 2 / 4; grid-row: 2; }
+  .ledger .vol { display: none; }
+}
+
+/* board: table */
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); font-weight: 600; }
+.tabs .n { color: var(--muted); margin-left: 4px; }
+.tabs button[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted); font-size: 14px; }
+.filters label { display: inline-flex; align-items: center; gap: 6px; }
+.filters input { width: 64px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; }
+.table { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-weight: 500; color: var(--muted); font-size: 13.5px; position: sticky; top: 0; background: var(--panel); }
+th button { background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font-weight: inherit; }
+th[aria-sort] button { color: var(--ink); font-weight: 600; }
+th.l, td.l { text-align: left; }
+td.item { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+td.item a { text-decoration: none; font-weight: 500; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--panel2); }
+tbody tr:last-child td { border-bottom: 0; }
+.star { background: none; border: 0; cursor: pointer; padding: 2px 4px; color: var(--line); font-size: 17px; line-height: 1; }
+.star[aria-pressed="true"] { color: var(--brass); }
+.spark { display: block; }
+.more { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--panel2); border-radius: 4px; padding: 7px 14px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--muted); }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+/* item page */
+.back { color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+.back:hover { color: var(--ink); }
+.itemhead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; justify-content: space-between; margin-bottom: 18px; }
+.itemhead h1 { font-size: 52px; letter-spacing: -.3px; }
+.itemhead .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.verdict { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--brass); border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.verdict > div { padding: 14px 16px 14px 0; }
+.verdict > div + div { padding-left: 16px; border-left: 1px solid var(--line); }
+.verdict dt { color: var(--muted); font-size: 14px; }
+.verdict dd { margin: 2px 0 0; font: 700 32px/1.1 var(--cond); }
+.verdict-line { margin: 12px 0 28px; font-size: 17px; max-width: 72ch; }
+@media (max-width: 760px) { .verdict { grid-template-columns: 1fr 1fr; } .verdict > div:nth-child(3) { padding-left: 0; border-left: 0; } .itemhead h1 { font-size: 38px; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+.panel h3 { margin-bottom: 4px; }
+.panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+@media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--muted); font: 12px var(--text); }
+.tip { position: absolute; pointer-events: none; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 13px; white-space: nowrap; transform: translate(-50%, -100%); display: none; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; margin-top: 8px; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--buy) 0 4px, transparent 4px 7px) !important; }
+dl.facts { display: grid; grid-template-columns: 1fr auto; gap: 0; margin: 0; }
+dl.facts dt, dl.facts dd { padding: 8px 0; border-bottom: 1px solid var(--line); margin: 0; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { text-align: right; font-weight: 500; }
+
+/* hour strips and heatmap */
+.strip { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; }
+.strip div { height: 38px; border-radius: 2px; background: var(--panel2); }
+.axis { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; color: var(--muted); font-size: 11.5px; text-align: center; margin-top: 4px; }
+.heat { display: grid; grid-template-columns: 38px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 11.5px; color: var(--muted); }
+.heat div { height: 26px; border-radius: 2px; background: var(--panel2); }
+.heat span { align-self: center; }
+.key { display: flex; gap: 18px; color: var(--muted); font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
+.key i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+.callout { font-size: 17px; margin-top: 16px; max-width: 72ch; }
+
+/* collector */
+.timeline { position: relative; height: 34px; border-bottom: 1px solid var(--line); margin: 6px 0 22px; }
+.timeline b { position: absolute; bottom: -5px; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--brass); }
+.timeline span { position: absolute; top: 0; font-size: 12px; color: var(--muted); transform: translateX(-50%); }
+.tl-label { font-weight: 600; margin-top: 10px; }
+/* in-game tooltip (Wowhead's Forever data), always drawn dark like the game */
+.wtt { background: #080d1c; border: 1px solid #9aa3b5; border-radius: 4px; padding: 10px 12px; color: #fff; font: 15px/1.45 var(--text); max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.wtt table { border-collapse: collapse; width: 100%; }
+.wtt td, .wtt th { padding: 0; border: 0; text-align: left; white-space: normal; position: static; background: none; color: inherit; font: inherit; }
+.wtt th { text-align: right; padding-left: 16px; }
+.wtt a { color: inherit; text-decoration: none; }
+.wtt a[href]:hover { text-decoration: underline; }
+.wtt .indent { margin-left: 12px; }
+.wtt .q { color: #ffd100; } .wtt .q0 { color: #9d9d9d; } .wtt .q1 { color: #fff; } .wtt .q2 { color: #1eff00; }
+.wtt .q3 { color: #0070dd; } .wtt .q4 { color: #a335ee; } .wtt .q5 { color: #ff8000; } .wtt .q6, .wtt .q7 { color: #e6cc80; }
+.wtt b { font-size: 16.5px; }
+.wtt .moneygold::after, .wtt .moneysilver::after, .wtt .moneycopper::after { content: ""; display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-left: .15em; }
+.wtt .moneygold::after { background: #e6bb52; } .wtt .moneysilver::after { background: #c9d2d6; } .wtt .moneycopper::after { background: #d08a55; }
+.wtt-wait { color: #9aa3b5; }
+#hovertt { position: fixed; z-index: 50; pointer-events: none; display: none; }
+.qc0 { color: #9d9d9d; } .qc1 { color: var(--ink); } .qc2 { color: #1eff00; } .qc3 { color: #2f8fe8; } .qc4 { color: #b45cf2; } .qc5 { color: #ff8000; }
+:root:not([data-theme="dark"]) .qc2 { color: #1a9e0c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qc2 { color: #1eff00; } }
+.titleicon { width: 56px; height: 56px; border-radius: 6px; border: 2px solid var(--line); vertical-align: middle; margin-right: 14px; }
+.itemhead h1 { display: flex; align-items: center; }
+.itemgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.itemgrid .wtt { position: sticky; top: 80px; width: 340px; }
+@media (max-width: 960px) { .itemgrid { grid-template-columns: 1fr; } .itemgrid .wtt { position: static; width: auto; max-width: 420px; } }
+.hide { display: none !important; }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--brass) 25%, transparent); } } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="wrap">
+    <a class="mark" href="#/"><span class="coin g" aria-hidden="true"></span>Gold Board</a>
+    <nav class="pages" aria-label="Pages">
+      <a href="#/" data-page="board">Board</a>
+      <a href="#/ledger" data-page="ledger">Ledger</a>
+      <a href="#/hours" data-page="hours">Best hours</a>
+      <a href="#/collector" data-page="collector">Collector</a>
+    </nav>
+    <div class="ah" role="group" aria-label="Auction house" id="ah"></div>
+    <div class="search">
+      <svg viewBox="0 0 16 16" fill="none" stroke-width="2" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>
+      <input id="q" type="search" placeholder="Find an item  ( / )" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="suggest" aria-label="Find an item">
+      <ul class="suggest" id="suggest" role="listbox"></ul>
+    </div>
+    <div class="fresh" id="fresh"></div>
+  </div>
+</div>
+<main class="wrap" id="view"></main>
+<div id="hovertt" class="wtt" role="tooltip"></div>
+
+<script>
+const D = /*__DATA__*/null;
+const AH_CUT = 0.05, PAGE = 100, DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const $ = (s, el = document) => el.querySelector(s);
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem("gb." + k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("gb." + k, JSON.stringify(v)); } catch {} },
+};
+const realmIds = Object.keys(D.realms);
+const saved = store.get("board", {});
+const S = Object.assign({ tab: "deals", sortKey: "score", sortDir: -1, minSold: 2, minRate: 0.3, minProfit: 1 }, saved, {
+  // you play on Roleplay-Alliance: it opens by default (the "ah" choice is remembered once you switch)
+  realm: realmIds.includes(store.get("ah")) ? store.get("ah") : realmIds.includes("roleplay-alliance") ? "roleplay-alliance" : realmIds[0],
+  q: "", shown: PAGE, scroll: 0, watch: new Set(store.get("watch", [])),
+});
+const saveBoard = () => store.set("board", { tab: S.tab, sortKey: S.sortKey, sortDir: S.sortDir, minSold: S.minSold, minRate: S.minRate, minProfit: S.minProfit });
+
+// ---------- formatting ----------
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function money(c, opt = {}) {
+  if (c == null || !isFinite(c)) return '<span class="mut">no data</span>';
+  const neg = c < 0; c = Math.round(Math.abs(c));
+  const g = Math.floor(c / 10000), s = Math.floor(c / 100) % 100, cc = c % 100;
+  const parts = [];
+  if (g) parts.push(`<span>${g.toLocaleString()}<i class="coin g" title="gold"></i></span>`);
+  if (s || (g && !opt.short)) parts.push(`<span>${s}<i class="coin s" title="silver"></i></span>`);
+  if (!g && (cc || !s)) parts.push(`<span>${cc}<i class="coin c" title="copper"></i></span>`);
+  return `<span class="m">${neg ? "−" : opt.sign ? "+" : ""}${parts.join("")}</span>`;
+}
+const plain = (c) => { c = Math.round(c); const g = Math.floor(c / 10000), s = Math.floor(c / 100) % 100; return g ? `${g}g ${s}s` : s ? `${s}s ${c % 100}c` : `${c % 100}c`; };
+const pct = (v, signed = true) => (v == null || !isFinite(v) ? "–" : `${signed && v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(0)}%`);
+const perDay = (v) => (v == null ? "–" : v >= 10 ? Math.round(v).toLocaleString() : v.toFixed(1));
+const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+const when = (ms) => new Date(ms).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+const hhmm = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+// ---------- data ----------
+const cache = {};
+function rows(realm = S.realm) {
+  if (cache[realm]) return cache[realm];
+  const R = D.realms[realm], other = D.realms[realmIds.find((r) => r !== realm)];
+  const out = [];
+  for (const id in R.latest) {
+    const [market, minBuy, recent, hist] = R.latest[id];
+    const [, , saleAvg, saleRate, soldPerDay] = D.region.items[id] || [];
+    // what it realistically sells for: the lowest of its usual price here, its 60-day price and its real EU sale price
+    const refs = [market, hist, saleAvg].filter((v) => v > 0);
+    const sell = refs.length ? Math.min(...refs) : null;
+    const profit = sell != null && minBuy > 0 ? sell * (1 - AH_CUT) - minBuy : null;
+    const series = R.minB[id] || [];
+    let prev = null;
+    for (let i = series.length - 2; i >= 0; i--) if (series[i] > 0) { prev = series[i]; break; }
+    out.push({
+      id, name: D.names[id] || `Item ${id}`, market, minBuy, recent, hist, saleAvg, saleRate, soldPerDay, sell, profit,
+      margin: profit != null ? profit / minBuy : null,
+      potential: profit > 0 ? profit * Math.min(soldPerDay || 0, 50) * (saleRate || 0) : 0,
+      score: profit > 0 ? profit * Math.min(soldPerDay || 0, 50) * (saleRate || 0) : 0,
+      change: prev && minBuy ? minBuy / prev - 1 : null,
+      vsMarket: market && minBuy ? minBuy / market - 1 : null,
+      buyBelow: sell ? sell * (1 - AH_CUT) * 0.85 : null,
+      otherMin: other && other.latest[id] && other.latest[id][1] > 0 ? other.latest[id][1] : null,
+    });
+  }
+  return (cache[realm] = out);
+}
+const byId = (id) => rows().find((r) => r.id === id);
+const isDeal = (r) => r.profit > 0 && r.profit >= S.minProfit * 100 && (r.soldPerDay || 0) >= S.minSold && (r.saleRate || 0) >= S.minRate;
+
+// how prices sit in each bucket (hour, weekday...) vs each item's own median: < 0 = cheaper than usual
+function profile(ids, bucketOf, n) {
+  const R = D.realms[S.realm], sum = new Array(n).fill(0), cnt = new Array(n).fill(0);
+  for (const id of ids) {
+    const s = R.minB[id]; if (!s) continue;
+    const vals = s.filter((v) => v > 0).sort((a, b) => a - b);
+    if (vals.length < 4) continue;
+    const med = vals[Math.floor(vals.length / 2)];
+    s.forEach((v, k) => { if (v > 0) { const b = bucketOf(new Date(R.times[k] * 60000)); sum[b] += Math.log(v / med); cnt[b]++; } });
+  }
+  return sum.map((v, b) => (cnt[b] ? Math.exp(v / cnt[b]) - 1 : null));
+}
+const hourOf = (d) => d.getHours();
+const dayOf = (d) => (d.getDay() + 6) % 7;
+const heatColor = (v, m) => {
+  if (v == null) return "var(--panel2)";
+  const a = Math.round(Math.min(1, Math.abs(v) / m) * 80) + 12;
+  return `color-mix(in srgb, ${v < 0 ? "var(--buy)" : "var(--sell)"} ${a}%, var(--panel))`;
+};
+function strip(prof, labels) {
+  const vals = prof.filter((v) => v != null), m = Math.max(0.02, ...vals.map(Math.abs));
+  const tip = (v, l) => `${l}: ${v == null ? "no data yet" : v < 0 ? `${pct(-v, false)} cheaper than usual` : `${pct(v, false)} dearer than usual`}`;
+  return `<div class="strip" style="--n:${prof.length}">${prof.map((v, i) => `<div style="background:${heatColor(v, m)}" title="${tip(v, labels[i])}"></div>`).join("")}</div>
+    <div class="axis" style="--n:${prof.length}">${labels.map((l, i) => `<span>${prof.length > 12 && i % 3 ? "" : l}</span>`).join("")}</div>`;
+}
+const keyHtml = `<div class="key"><span><i style="background:var(--buy)"></i>Cheaper than usual: buy</span><span><i style="background:var(--sell)"></i>Dearer than usual: sell</span><span><i style="background:var(--panel2);border:1px solid var(--line)"></i>No data yet</span></div>`;
+const bestOf = (prof, labels) => {
+  const have = prof.map((v, i) => [v, labels[i]]).filter(([v]) => v != null).sort((a, b) => a[0] - b[0]);
+  return have.length >= 6 ? { cheap: have[0], dear: have[have.length - 1], count: have.length } : null;
+};
+const HOURS = [...Array(24)].map((_, h) => `${h}h`);
+
+// ---------- item tooltips (Wowhead's Forever data, fetched only for items you look at) ----------
+const ttCache = new Map();
+function tooltip(id) {
+  if (!ttCache.has(id)) {
+    ttCache.set(id, fetch(`https://nether.wowhead.com/forever/tooltip/item/${encodeURIComponent(id)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j) => ({ name: j.name, quality: j.quality, icon: j.icon, html: cleanTooltip(j.tooltip || "") }))
+      .catch((e) => { ttCache.delete(id); throw e; }));
+  }
+  return ttCache.get(id);
+}
+// keep only plain markup: no scripts, no event handlers; item links open the item here, others go to Wowhead
+function cleanTooltip(html) {
+  const doc = new DOMParser().parseFromString(html.replace(/<!--[\s\S]*?-->/g, ""), "text/html");
+  doc.querySelectorAll("script, style, iframe, object, embed, img, link, meta").forEach((el) => el.remove());
+  doc.querySelectorAll("*").forEach((el) => {
+    for (const a of [...el.attributes]) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith("on") || n === "style" || n === "src") el.removeAttribute(a.name);
+    }
+    if (el.tagName === "A") {
+      const href = el.getAttribute("href") || "";
+      const item = href.match(/^\/forever\/item=(\d+)/);
+      if (item) el.setAttribute("href", `#/item/${item[1]}`);
+      else if (href.startsWith("/")) { el.setAttribute("href", `https://www.wowhead.com${href}`); el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener"); }
+      else el.removeAttribute("href");
+    }
+  });
+  return doc.body.innerHTML;
+}
+const iconUrl = (icon) => `https://wow.zamimg.com/images/wow/icons/large/${encodeURIComponent(icon)}.jpg`;
+
+// hover any item name for its tooltip
+const hov = $("#hovertt");
+let hovId = null, hovTimer = null, hovXY = [0, 0];
+function placeHover() {
+  const [x, y] = hovXY, w = hov.offsetWidth, h = hov.offsetHeight;
+  hov.style.left = `${Math.min(x + 18, innerWidth - w - 8)}px`;
+  hov.style.top = `${y + 18 + h > innerHeight ? Math.max(8, y - h - 12) : y + 18}px`;
+}
+document.addEventListener("pointerover", (e) => {
+  if (e.pointerType === "touch") return;
+  const el = e.target.closest("[data-tt]");
+  if (!el || el.dataset.tt === hovId) return;
+  hovId = el.dataset.tt;
+  clearTimeout(hovTimer);
+  hovTimer = setTimeout(() => {
+    const id = hovId;
+    hov.innerHTML = '<span class="wtt-wait">Loading tooltip…</span>';
+    hov.style.display = "block"; placeHover();
+    tooltip(id).then((t) => { if (hovId === id) { hov.innerHTML = t.html; placeHover(); } })
+      .catch(() => { if (hovId === id) hov.innerHTML = '<span class="wtt-wait">Tooltip unavailable: Wowhead did not answer.</span>'; });
+  }, 180);
+});
+document.addEventListener("pointermove", (e) => { hovXY = [e.clientX, e.clientY]; if (hov.style.display === "block") placeHover(); });
+document.addEventListener("pointerout", (e) => {
+  const el = e.target.closest("[data-tt]");
+  if (el && !el.contains(e.relatedTarget)) { hovId = null; clearTimeout(hovTimer); hov.style.display = "none"; }
+});
+window.addEventListener("hashchange", () => { hovId = null; clearTimeout(hovTimer); hov.style.display = "none"; });
+
+// ---------- top bar ----------
+function renderTop(page) {
+  document.querySelectorAll("nav.pages a").forEach((a) => { if (a.dataset.page !== page) a.removeAttribute("aria-current"); else a.setAttribute("aria-current", "page"); });
+  $("#ah").innerHTML = realmIds.map((id) => `<button type="button" data-r="${id}" aria-pressed="${id === S.realm}">${esc(D.realms[id].label)}</button>`).join("");
+  const R = D.realms[S.realm], st = D.status;
+  const last = st.lastPoll ? Date.parse(st.lastPoll) : null;
+  const late = !last || Date.now() - last > (st.intervalMin + 20) * 60000;
+  const gap = st.gaps.median ? `TSM updates about every ${Math.round(st.gaps.median / 60 * 10) / 10} h` : "";
+  $("#fresh").innerHTML = R ? `<span>Prices from ${when(R.t)}, ${ago(R.t)}</span>${gap ? `<span>${gap}</span>` : ""}<span><i class="dot${late ? " late" : ""}"></i>${late ? `Collector last ran ${last ? ago(last) : "never"}: is the PC asleep?` : `Collector checked ${ago(last)}`}</span>` : "";
+}
+
+// ---------- board ----------
+const COLS = {
+  deals: [["name", "Item", "l"], ["spark", "Trend", "l"], ["minBuy", "Buy now"], ["sell", "Sells for"], ["profit", "Profit each"], ["margin", "Margin"], ["soldPerDay", "Sold/day in EU"], ["saleRate", "Sale rate"], ["potential", "Potential/day"]],
+  all: [["name", "Item", "l"], ["spark", "Trend", "l"], ["minBuy", "Cheapest"], ["market", "Market value"], ["hist", "60-day"], ["saleAvg", "EU sale price"], ["vsMarket", "vs market"], ["soldPerDay", "Sold/day in EU"]],
+  movers: [["name", "Item", "l"], ["spark", "Trend", "l"], ["minBuy", "Cheapest now"], ["change", "Since last update"], ["market", "Market value"], ["soldPerDay", "Sold/day in EU"]],
+};
+COLS.watch = COLS.deals;
+const TAB_NAMES = { deals: "Deals now", all: "All items", movers: "Movers", watch: "Watchlist" };
+const DEFAULT_SORT = { deals: ["score", -1], all: ["soldPerDay", -1], movers: ["change", 1], watch: ["score", -1] };
+const COL_TIPS = {
+  sell: "The lowest of its market value here, its 60-day price and its real EU sale price, so profit is counted on the safe side",
+  profit: "Sells for, minus the 5% auction house cut, minus buying it now",
+  potential: "Profit each × sales per day (capped at 50) × sale rate. An upper bound for comparing items, not a promise",
+  saleRate: "Share of listings that sell (EU-wide, from TSM)",
+};
+
+function tabList(tab) {
+  const q = S.q.trim().toLowerCase();
+  let list = rows().filter((r) => !q || r.name.toLowerCase().includes(q));
+  if (tab === "deals") list = list.filter(isDeal);
+  if (tab === "movers") list = list.filter((r) => r.change != null && Math.abs(r.change) >= 0.05 && (r.soldPerDay || 0) >= S.minSold);
+  if (tab === "watch") list = list.filter((r) => S.watch.has(r.id));
+  return list;
+}
+function sparkline(id) {
+  const s = (D.realms[S.realm].minB[id] || []).slice(-30).filter((v) => v > 0);
+  if (s.length < 2) return '<span class="mut">–</span>';
+  const W = 72, H = 20, lo = Math.min(...s), hi = Math.max(...s), span = hi - lo || 1;
+  const pts = s.map((v, i) => `${(i / (s.length - 1) * (W - 2) + 1).toFixed(1)},${(H - 2 - (v - lo) / span * (H - 4)).toFixed(1)}`).join(" ");
+  const col = s[s.length - 1] <= s[0] ? "var(--buy)" : "var(--sell)";
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="${col}" stroke-width="1.6" points="${pts}"/></svg>`;
+}
+function cell(k, r) {
+  const v = r[k];
+  switch (k) {
+    case "name": return `<td class="l item"><button class="star" type="button" data-star="${r.id}" aria-pressed="${S.watch.has(r.id)}" aria-label="Watch ${esc(r.name)}">★</button> <a href="#/item/${r.id}" data-tt="${r.id}">${esc(r.name)}</a></td>`;
+    case "spark": return `<td class="l">${sparkline(r.id)}</td>`;
+    case "minBuy": case "sell": case "market": case "hist": case "saleAvg": return `<td>${money(v)}</td>`;
+    case "profit": return `<td class="${v > 0 ? "pos" : "neg"}">${money(v, { sign: true })}</td>`;
+    case "potential": return `<td>${v ? money(v, { short: true }) : "–"}</td>`;
+    case "margin": return `<td class="${v > 0 ? "pos" : "neg"}">${pct(v)}</td>`;
+    case "vsMarket": case "change": return `<td class="${v < 0 ? "pos" : v > 0 ? "neg" : ""}">${pct(v)}</td>`;
+    case "soldPerDay": return `<td>${perDay(v)}</td>`;
+    case "saleRate": return `<td>${v == null ? "–" : `${Math.round(v * 100)}%`}</td>`;
+  }
+  return `<td>${v ?? "–"}</td>`;
+}
+
+function renderBoard() {
+  const deals = rows().filter(isDeal).sort((a, b) => b.score - a.score);
+  const top = deals.slice(0, 5);
+  const counts = { deals: tabList("deals").length, all: tabList("all").length, movers: tabList("movers").length, watch: tabList("watch").length };
+  $("#view").innerHTML = `
+    <section class="ledger" aria-labelledby="best">
+      <header><h2 id="best">Best flips right now</h2><p>${deals.length.toLocaleString()} items on ${esc(D.realms[S.realm].label)} are listed under what they sell for</p></header>
+      ${top.length ? `<ol>${top.map((r, i) => `
+        <li data-go="${r.id}">
+          <span class="rank">${i + 1}</span>
+          <a class="name" href="#/item/${r.id}" data-tt="${r.id}">${esc(r.name)}</a>
+          <span class="trade">Buy at <b>${money(r.minBuy)}</b>, sell at <b>${money(r.sell)}</b></span>
+          <span class="profit">${money(r.profit, { sign: true })}<small>profit each, ${pct(r.margin)}</small></span>
+          <span class="vol">${perDay(r.soldPerDay)} sold a day</span>
+        </li>`).join("")}</ol>` : `<p class="empty">No deals match your filters. Lower the minimum profit or sales per day below.</p>`}
+    </section>
+    <section aria-label="Items">
+      <div class="tools">
+        <div class="tabs" role="group" aria-label="List">${Object.keys(TAB_NAMES).map((t) => `<button type="button" data-tab="${t}" aria-pressed="${t === S.tab}">${TAB_NAMES[t]}<span class="n">${counts[t].toLocaleString()}</span></button>`).join("")}</div>
+        <div class="filters">
+          <label>Sold/day at least <input type="number" id="fSold" min="0" step="0.5" value="${S.minSold}"></label>
+          <label>Sale rate at least <input type="number" id="fRate" min="0" max="1" step="0.05" value="${S.minRate}"></label>
+          <label>Profit at least <input type="number" id="fProfit" min="0" step="0.5" value="${S.minProfit}"> silver</label>
+        </div>
+      </div>
+      <div class="table" id="table"></div>
+    </section>`;
+  renderTable();
+}
+function renderTable() {
+  const list = tabList(S.tab);
+  const cols = COLS[S.tab];
+  if (!cols.some(([k]) => k === S.sortKey) || S.sortKey === "spark") [S.sortKey, S.sortDir] = DEFAULT_SORT[S.tab];
+  const key = S.sortKey;
+  list.sort((a, b) => key === "name" ? S.sortDir * a.name.localeCompare(b.name) : S.sortDir * ((a[key] ?? -Infinity) - (b[key] ?? -Infinity)));
+  const shown = list.slice(0, S.shown);
+  const empty = { deals: "No deals match these filters. Lower a minimum to see more.", all: "No item matches your search.", movers: "No price moved 5% or more since the last TSM update.", watch: "Your watchlist is empty. Click the star next to any item to follow it here." }[S.tab];
+  $("#table").innerHTML = list.length ? `
+    <table>
+      <thead><tr>${cols.map(([k, l, a]) => {
+        const sorted = k === key ? ` aria-sort="${S.sortDir < 0 ? "descending" : "ascending"}"` : "";
+        const label = k === "spark" ? l : `<button type="button" data-sort="${k}"${COL_TIPS[k] ? ` title="${COL_TIPS[k]}"` : ""}>${l}${k === key ? (S.sortDir < 0 ? " ▾" : " ▴") : ""}</button>`;
+        return `<th class="${a || ""}"${sorted} scope="col">${label}</th>`;
+      }).join("")}</tr></thead>
+      <tbody>${shown.map((r) => `<tr data-go="${r.id}">${cols.map(([k]) => cell(k, r)).join("")}</tr>`).join("")}</tbody>
+    </table>
+    <div class="more"><span>Showing ${shown.length.toLocaleString()} of ${list.length.toLocaleString()}</span>${list.length > shown.length ? `<button class="btn" type="button" id="moreBtn">Show ${Math.min(PAGE, list.length - shown.length)} more</button>` : ""}</div>`
+    : `<p class="empty">${empty}</p>`;
+}
+
+// ---------- item page ----------
+function renderItem(id) {
+  const r = byId(id);
+  if (!r) { $("#view").innerHTML = `<a class="back" href="#/">‹ Back to the board</a><p class="empty">This item isn't listed on ${esc(D.realms[S.realm].label)} right now. Pick the other auction house at the top, or search for another item.</p>`; return; }
+  const deal = r.profit > 0;
+  const hp = profile([id], hourOf, 24), dp = profile([id], dayOf, 7);
+  const bh = bestOf(hp, HOURS);
+  const tsm = `https://tradeskillmaster.com/forever/eu/${S.realm}/items/${r.id}`;
+  const verdict = r.minBuy == null ? "Nobody is selling this right now."
+    : deal ? `The cheapest listing is ${pct(1 - r.minBuy / r.sell, false)} under what it sells for, so buying it and relisting at ${plain(r.sell)} makes ${plain(r.profit)} each after the auction cut.`
+    : `No deal right now: the cheapest listing costs more than it reliably sells for. Wait for one under ${plain(r.buyBelow)}.`;
+  const sales = r.soldPerDay != null ? ` About ${perDay(r.soldPerDay)} sell a day across EU, ${Math.round((r.saleRate || 0) * 100)}% of listings find a buyer.` : "";
+  const hourLine = bh ? ` Cheapest around ${bh.cheap[1].replace("h", ":00")}, dearest around ${bh.dear[1].replace("h", ":00")}.` : "";
+  $("#view").innerHTML = `
+    <a class="back" href="#/">‹ Back to the board</a>
+    <div class="itemhead">
+      <h1 id="itemTitle">${esc(r.name)}</h1>
+      <div class="actions">
+        <button class="btn" type="button" data-star="${r.id}" aria-pressed="${S.watch.has(r.id)}">${S.watch.has(r.id) ? "★ Watching" : "☆ Watch"}</button>
+        <a class="btn" href="${tsm}" target="_blank" rel="noopener">TSM page with heatmaps since launch</a>
+        <a class="btn" href="https://www.wowhead.com/forever/item=${r.id}" target="_blank" rel="noopener">Wowhead</a>
+      </div>
+    </div>
+    <dl class="verdict">
+      <div><dt>Buy now</dt><dd>${money(r.minBuy)}</dd></div>
+      <div><dt>Sells for</dt><dd>${money(r.sell)}</dd></div>
+      <div><dt>Profit each</dt><dd class="${deal ? "pos" : "neg"}">${money(r.profit, { sign: true })}</dd></div>
+      <div><dt>Buy below</dt><dd>${money(r.buyBelow)}</dd></div>
+    </dl>
+    <p class="verdict-line">${verdict}${sales}${hourLine}</p>
+    <div class="itemgrid">
+      <section class="panel">
+        <h3>Price since the collector started</h3>
+        <p class="sub">${D.realms[S.realm].times.length} TSM updates on ${esc(D.realms[S.realm].label)}. Hover the chart for exact prices.</p>
+        <div class="chart" id="chart"></div>
+      </section>
+      <div class="wtt" id="itemTip" aria-label="Item tooltip"><span class="wtt-wait">Loading tooltip…</span></div>
+    </div>
+    <div class="cols">
+      <section class="panel">
+        <h3>By hour of day</h3>
+        <p class="sub">The cheapest listing at each hour, compared with its usual price. Your local time.</p>
+        ${strip(hp, HOURS)}${keyHtml}
+      </section>
+      <section class="panel">
+        <h3>By day of week</h3>
+        <p class="sub">Fills in over the week. Raid nights usually show up here first.</p>
+        ${strip(dp, DAYS)}
+      </section>
+    </div>
+    <div class="cols">
+      <section class="panel">
+        <h3>Prices on ${esc(D.realms[S.realm].label)}</h3>
+        <dl class="facts">
+          <dt>Cheapest listing</dt><dd>${money(r.minBuy)}</dd>
+          <dt>Market value (14-day, recent days count more)</dt><dd>${money(r.market)}</dd>
+          <dt>Latest snapshot value</dt><dd>${money(r.recent)}</dd>
+          <dt>60-day average</dt><dd>${money(r.hist)}</dd>
+          ${r.otherMin != null ? `<dt>Cheapest on ${esc(D.realms[realmIds.find((x) => x !== S.realm)].label)}</dt><dd>${money(r.otherMin)}</dd>` : ""}
+        </dl>
+      </section>
+      <section class="panel">
+        <h3>Demand across EU</h3>
+        <dl class="facts">
+          <dt>Average sale price</dt><dd>${money(r.saleAvg)}</dd>
+          <dt>Sold per day</dt><dd>${perDay(r.soldPerDay)}</dd>
+          <dt>Listings that sell</dt><dd>${r.saleRate == null ? "–" : `${Math.round(r.saleRate * 100)}%`}</dd>
+          <dt>Potential per day</dt><dd title="${COL_TIPS.potential}">${r.potential ? money(r.potential, { short: true }) : "–"}</dd>
+        </dl>
+      </section>
+    </div>
+    ${itemTrades(r.id)}`;
+  mountChart($("#chart"), r);
+  tooltip(r.id).then((t) => {
+    if (route().id !== r.id) return;
+    $("#itemTip").innerHTML = t.html;
+    const h = $("#itemTitle");
+    h.className = `qc${t.quality}`;
+    if (t.icon) h.insertAdjacentHTML("afterbegin", `<img class="titleicon" src="${iconUrl(t.icon)}" alt="" width="56" height="56">`);
+  }).catch(() => { const el = $("#itemTip"); if (el) el.innerHTML = '<span class="wtt-wait">Tooltip unavailable: Wowhead did not answer. Use the Wowhead button above.</span>'; });
+}
+
+// your buys and sales of one item, and what you hold of it
+function itemTrades(id) {
+  const list = LEDGER.filter((e) => String(e.itemID) === String(id) && e.kind !== "post");
+  if (!list.length) return "";
+  const p = trades()[String(id)];
+  const head = p && p.held > 0 ? `You hold ${p.held}, paid ${money(p.avg)} each${p.gain != null ? `, <span class="${p.gain >= 0 ? "pos" : "neg"}">${pct(p.gain)}</span> if sold now` : ""}.` : "You hold none of the ones you bought.";
+  return `<section class="panel" style="margin-top:16px"><h3>Your trades</h3><p class="sub">${head}</p>
+    <div class="table"><table><thead><tr><th class="l">When</th><th class="l">What</th><th>Qty</th><th>Each</th><th>Total</th></tr></thead><tbody>
+    ${list.slice(-30).reverse().map((e) => { const total = e.kind === "sell" ? (e.price || 0) - (e.cut || 0) : e.price; return `<tr><td class="l">${when(e.t * 1000)}</td><td class="l">${KIND_LABEL[e.kind] || e.kind}</td><td>${e.qty ?? ""}</td><td>${e.qty && total ? money(total / e.qty) : "–"}</td><td>${money(total)}</td></tr>`; }).join("")}
+    </tbody></table></div></section>`;
+}
+
+// your own Auctionator scans of this item on this auction house: [[minutes, cheapest, quantity], ...]
+function myScanPoints(id) {
+  const s = D.myScans && D.myScans[S.realm];
+  const raw = s && s.items[id];
+  if (!raw) return [];
+  return raw.split(",").map((x) => x.split(":").map(Number)).map(([k, min, qty]) => [s.times[k], min, qty]);
+}
+
+function mountChart(el, r) {
+  const R = D.realms[S.realm], T = R.times, a = R.minB[r.id] || [], b = R.mkt[r.id] || [];
+  const idx = T.map((_, k) => k).filter((k) => a[k] > 0 || b[k] > 0);
+  const mine = myScanPoints(r.id);   // your own Auctionator scans (Gold Board addon)
+  if (idx.length + mine.length < 2) {
+    el.innerHTML = `<p class="empty">The chart starts with the second TSM update for this item. TSM updates about every few hours, so check back soon.</p>`;
+    return;
+  }
+  const W = 900, H = 300, L = 70, Rm = 16, Tm = 14, B = 30;
+  const ys = idx.flatMap((k) => [a[k], b[k]]).filter((v) => v > 0).concat(r.buyBelow > 0 ? [r.buyBelow] : [], mine.map((m) => m[1]));
+  const xs = idx.map((k) => T[k]).concat(mine.map((m) => m[0]));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys) * 0.94, y1 = Math.max(...ys) * 1.04;
+  const X = (t) => L + (t - x0) / (x1 - x0 || 1) * (W - L - Rm);
+  const Y = (v) => Tm + (1 - (v - y0) / (y1 - y0 || 1)) * (H - Tm - B);
+  const path = (s) => idx.filter((k) => s[k] > 0).map((k, i) => `${i ? "L" : "M"}${X(T[k]).toFixed(1)},${Y(s[k]).toFixed(1)}`).join("");
+  const grid = [0, 1, 2, 3].map((i) => y0 + (y1 - y0) * i / 3).map((v) => `<line x1="${L}" x2="${W - Rm}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${plain(v)}</text>`).join("");
+  // time marks on local midnights, plus every 6 h while the history is short
+  const stepH = x1 - x0 <= 2 * 1440 ? 6 : x1 - x0 <= 5 * 1440 ? 12 : 24;
+  const start = new Date(x0 * 60000); start.setHours(0, 0, 0, 0);
+  const marks = [];
+  for (const d = new Date(start); d.getTime() / 60000 <= x1; d.setHours(d.getHours() + stepH)) {
+    const t = d.getTime() / 60000;
+    if (t >= x0 && X(t) > L + 20 && X(t) < W - Rm - 20) marks.push(t);
+  }
+  const label = (t) => { const d = new Date(t * 60000); return d.getHours() === 0 ? d.toLocaleDateString([], { weekday: "short", day: "numeric" }) : `${d.getHours()}:00`; };
+  const dayTicks = marks.map((t) => `<line x1="${X(t)}" x2="${X(t)}" y1="${H - B}" y2="${H - B + 5}" stroke="var(--line)"/><text x="${X(t)}" y="${H - 8}" text-anchor="middle"${new Date(t * 60000).getHours() === 0 ? ' font-weight="600"' : ""}>${label(t)}</text>`).join("");
+  const below = r.buyBelow > 0 ? `<line x1="${L}" x2="${W - Rm}" y1="${Y(r.buyBelow)}" y2="${Y(r.buyBelow)}" stroke="var(--buy)" stroke-dasharray="5 4" stroke-width="1.5"/>` : "";
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price history of ${esc(r.name)}">
+      ${grid}${dayTicks}${below}
+      <path d="${path(b)}" fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <path d="${path(a)}" fill="none" stroke="var(--brass)" stroke-width="2.5"/>
+      ${mine.map(([t, v, q]) => `<circle cx="${X(t).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4" fill="var(--panel)" stroke="var(--brass)" stroke-width="2"><title>Your scan ${when(t * 60000)}: ${plain(v)}, ${q} listed</title></circle>`).join("")}
+      <line id="cross" y1="${Tm}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>
+      <circle id="dotA" r="4.5" fill="var(--brass)" visibility="hidden"/>
+      <rect x="${L}" y="0" width="${W - L - Rm}" height="${H}" fill="transparent" id="hit"/>
+    </svg>
+    <div class="tip" id="tip"></div>
+    <div class="legend"><span><i style="background:var(--brass)"></i>Cheapest listing</span><span><i style="background:var(--muted)"></i>Market value</span>${mine.length ? `<span><i style="background:none;border:2px solid var(--brass);width:9px;height:9px;border-radius:50%"></i>Your scans (${mine.length})</span>` : ""}${below ? `<span><i class="dash"></i>Buy below ${plain(r.buyBelow)}</span>` : ""}</div>`;
+  const svg = $("svg", el), tip = $("#tip", el), cross = $("#cross", el), dot = $("#dotA", el);
+  const show = (evt) => {
+    const box = svg.getBoundingClientRect();
+    const sx = (evt.clientX - box.left) / box.width * W;
+    let best = idx[0];
+    for (const k of idx) if (Math.abs(X(T[k]) - sx) < Math.abs(X(T[best]) - sx)) best = k;
+    const px = X(T[best]);
+    cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.setAttribute("visibility", "visible");
+    if (a[best] > 0) { dot.setAttribute("cx", px); dot.setAttribute("cy", Y(a[best])); dot.setAttribute("visibility", "visible"); } else dot.setAttribute("visibility", "hidden");
+    tip.innerHTML = `<b>${when(T[best] * 60000)}</b><br>Cheapest ${a[best] > 0 ? plain(a[best]) : "–"}<br>Market ${b[best] > 0 ? plain(b[best]) : "–"}`;
+    tip.style.left = `${px / W * box.width}px`;
+    tip.style.top = `${Math.max(10, (a[best] > 0 ? Y(a[best]) : Tm) / H * box.height - 10)}px`;
+    tip.style.display = "block";
+  };
+  const hide = () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+  if (!idx.length) return;   // only your own scans so far: their dots carry their own tooltips
+  const hit = $("#hit", el);
+  hit.addEventListener("pointermove", show);
+  hit.addEventListener("pointerleave", hide);
+}
+
+// ---------- ledger (what the Gold Board addon recorded in game) ----------
+const LEDGER = D.ledger || [];
+const KIND_LABEL = { buy: "Bought", sell: "Sold", post: "Posted", cancel: "Cancelled", expire: "Expired" };
+
+// Per item: your buys matched to your sales oldest first; what's left is what you hold and what it cost.
+function trades() {
+  const per = {};
+  for (const e of LEDGER) {
+    const id = e.itemID != null ? String(e.itemID) : "name:" + e.name;
+    const p = per[id] || (per[id] = { id, name: e.name || D.names[id] || id, lots: [], bought: 0, cost: 0, sold: 0, proceeds: 0, realized: 0, cut: 0, deposits: 0, refunded: 0 });
+    if (e.kind === "buy" && e.qty > 0) {
+      p.lots.push({ qty: e.qty, unit: (e.price || 0) / e.qty });
+      p.bought += e.qty; p.cost += e.price || 0;
+    } else if (e.kind === "sell") {
+      const proceeds = (e.price || 0) - (e.cut || 0);
+      p.sold += e.qty || 0; p.proceeds += proceeds; p.cut += e.cut || 0; p.refunded += e.deposit || 0;
+      let left = e.qty || 0, basis = 0, matched = 0;
+      while (left > 0 && p.lots.length) {
+        const take = Math.min(left, p.lots[0].qty);
+        basis += take * p.lots[0].unit; matched += take;
+        p.lots[0].qty -= take; left -= take;
+        if (p.lots[0].qty <= 0) p.lots.shift();
+      }
+      // only the part matched to a buy you recorded counts as trading profit
+      if (matched) p.realized += proceeds * (matched / (e.qty || matched)) - basis;
+    } else if (e.kind === "post") {
+      p.deposits += e.deposit || 0;
+    }
+  }
+  for (const p of Object.values(per)) {
+    p.held = p.lots.reduce((n, l) => n + l.qty, 0);
+    p.heldCost = p.lots.reduce((n, l) => n + l.qty * l.unit, 0);
+    p.avg = p.held ? p.heldCost / p.held : null;
+    const h = D.holdings && D.holdings[p.id];
+    if (h != null && p.held) p.held = Math.min(p.held, h);   // Syndicator's count: sold off elsewhere or used up
+    const r = /^\d+$/.test(p.id) ? byIdAny(p.id) : null;
+    // what you could sell at today: just under the cheapest listing, never above what it usually sells for
+    p.now = r ? (r.minBuy > 0 ? Math.min(r.sell || r.minBuy, r.minBuy) : r.sell) : null;
+    p.gain = p.avg && p.now ? (p.now * (1 - AH_CUT) - p.avg) / p.avg : null;
+  }
+  return per;
+}
+const byIdAny = (id) => rows().find((r) => r.id === id);
+
+// total gold across characters over time (each character's last known value added up)
+function goldSeries() {
+  const chars = Object.entries(D.gold || {});
+  const events = [];
+  chars.forEach(([name, c]) => c.samples.forEach(([t, v]) => events.push([t, name, v])));
+  events.sort((a, b) => a[0] - b[0]);
+  const last = {}, out = [];
+  for (const [t, name, v] of events) {
+    last[name] = v;
+    const total = Object.values(last).reduce((a, b) => a + b, 0);
+    if (out.length && out[out.length - 1][0] === Math.round(t / 60)) out[out.length - 1][1] = total;
+    else out.push([Math.round(t / 60), total]);
+  }
+  return out;
+}
+
+function lineChart(el, pts, label) {
+  if (pts.length < 2) { el.innerHTML = `<p class="empty">The chart starts after the second change in your gold.</p>`; return; }
+  const W = 900, H = 240, L = 80, Rm = 16, Tm = 12, B = 30;
+  const x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+  const vs = pts.map((p) => p[1]), y0 = Math.min(...vs) * 0.97, y1 = Math.max(...vs) * 1.03 || 1;
+  const X = (t) => L + (t - x0) / (x1 - x0 || 1) * (W - L - Rm), Y = (v) => Tm + (1 - (v - y0) / (y1 - y0 || 1)) * (H - Tm - B);
+  // gold moves in steps: draw it as one
+  let d = "";
+  pts.forEach(([t, v], i) => { d += i ? `H${X(t).toFixed(1)}V${Y(v).toFixed(1)}` : `M${X(t).toFixed(1)},${Y(v).toFixed(1)}`; });
+  const grid = [0, 1, 2, 3].map((i) => y0 + (y1 - y0) * i / 3).map((v) => `<line x1="${L}" x2="${W - Rm}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${plain(v)}</text>`).join("");
+  const ticks = [x0, (x0 + x1) / 2, x1].map((t, i) => `<text x="${X(t)}" y="${H - 8}" text-anchor="${["start", "middle", "end"][i]}">${when(t * 60000)}</text>`).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${ticks}<path d="${d}" fill="none" stroke="var(--brass)" stroke-width="2.5"/></svg>`;
+}
+
+function renderLedger() {
+  if (!LEDGER.length && !Object.keys(D.gold || {}).length) {
+    $("#view").innerHTML = `<h1 style="margin-bottom:6px">Ledger</h1>
+      <p class="empty" style="text-align:left;max-width:72ch;padding-left:0">Nothing recorded yet. The Gold Board addon (the <b>GoldBoard</b> folder in Interface\\AddOns) records your gold, buys and sales while you play.
+      This page fills in after your next /reload or logout.</p>`;
+    return;
+  }
+  const per = Object.values(trades());
+  const week = Date.now() / 1000 - 7 * 86400;
+  const recent = LEDGER.filter((e) => e.t >= week);
+  const sum = (list, f) => list.reduce((n, e) => n + (f(e) || 0), 0);
+  const spent = sum(recent.filter((e) => e.kind === "buy"), (e) => e.price);
+  const earned = sum(recent.filter((e) => e.kind === "sell"), (e) => (e.price || 0) - (e.cut || 0));
+  const fees = sum(recent.filter((e) => e.kind === "sell"), (e) => e.cut) + Math.max(0, sum(recent.filter((e) => e.kind === "post"), (e) => e.deposit) - sum(recent.filter((e) => e.kind === "sell"), (e) => e.deposit));
+  const realized = per.reduce((n, p) => n + p.realized, 0);
+  const held = per.filter((p) => p.held > 0).sort((a, b) => (b.gain ?? -9) - (a.gain ?? -9));
+  const heldValue = held.reduce((n, p) => n + (p.now ? p.now * (1 - AH_CUT) * p.held : 0), 0);
+  const heldCost = held.reduce((n, p) => n + (p.avg || 0) * p.held, 0);
+  const g = goldSeries();
+  const goldNow = g.length ? g[g.length - 1][1] : null;
+  const verdict = (p) => p.gain == null ? '<span class="mut">no price</span>' : p.gain >= 0.3 ? '<span class="pos">sell now</span>' : p.gain >= 0 ? "hold or sell" : '<span class="neg">hold</span>';
+  $("#view").innerHTML = `
+    <h1 style="margin-bottom:6px">Ledger</h1>
+    <p class="mut" style="max-width:72ch;margin-bottom:22px">Recorded in game by the Gold Board addon, across all your characters. It updates after each /reload or logout.</p>
+    <dl class="verdict">
+      <div><dt>Gold now, all characters</dt><dd>${money(goldNow)}</dd></div>
+      <div><dt>Bought, last 7 days</dt><dd>${money(spent)}</dd></div>
+      <div><dt>Sold after the cut, last 7 days</dt><dd>${money(earned)}</dd></div>
+      <div><dt>Trading profit, all time</dt><dd class="${realized >= 0 ? "pos" : "neg"}">${money(realized, { sign: true })}</dd></div>
+    </dl>
+    <p class="verdict-line">Auction house fees this week: ${money(fees)} (cut on sales and deposits you didn't get back). You hold ${held.length} item${held.length === 1 ? "" : "s"} bought for ${money(heldCost)}, worth about ${money(heldValue)} at today's prices after the cut.</p>
+    <section class="panel"><h3>Gold over time</h3><p class="sub">All characters added up.</p><div class="chart" id="goldChart"></div></section>
+    <section class="panel" style="margin-top:16px">
+      <h3>What you hold</h3>
+      <p class="sub">Bought at the auction house and not sold yet. "Sell now" means it would make 30% or more over what you paid, after the cut.</p>
+      ${held.length ? `<div class="table"><table><thead><tr><th class="l">Item</th><th>Held</th><th>Paid each</th><th title="The cheapest listing now, or what it usually sells for if that's lower">Could sell at now</th><th>Gain</th><th>Signal</th></tr></thead><tbody>
+        ${held.map((p) => `<tr data-go="${/^\d+$/.test(p.id) ? p.id : ""}"><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.held}</td><td>${money(p.avg)}</td><td>${money(p.now)}</td><td class="${p.gain >= 0 ? "pos" : "neg"}">${pct(p.gain)}</td><td>${verdict(p)}</td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="empty">Nothing held. Items you buy at the auction house show up here.</p>`}
+    </section>
+    <section class="panel" style="margin-top:16px">
+      <h3>Profit per item</h3>
+      <p class="sub">Sales matched to what you paid, oldest first.</p>
+      ${per.some((p) => p.sold) ? `<div class="table"><table><thead><tr><th class="l">Item</th><th>Bought</th><th>Sold</th><th>Paid</th><th>Got after the cut</th><th>Profit</th></tr></thead><tbody>
+        ${per.filter((p) => p.sold).sort((a, b) => b.realized - a.realized).map((p) => `<tr><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.bought}</td><td>${p.sold}</td><td>${money(p.cost)}</td><td>${money(p.proceeds)}</td><td class="${p.realized >= 0 ? "pos" : "neg"}">${money(p.realized, { sign: true })}</td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="empty">No sales recorded yet.</p>`}
+    </section>
+    <section class="panel" style="margin-top:16px">
+      <h3>Recent activity</h3>
+      <div class="table"><table><thead><tr><th class="l">When</th><th class="l">What</th><th class="l">Item</th><th>Qty</th><th>Price</th><th class="l">Character</th></tr></thead><tbody>
+        ${LEDGER.slice(-60).reverse().map((e) => `<tr><td class="l">${when(e.t * 1000)}</td><td class="l">${KIND_LABEL[e.kind] || e.kind}</td><td class="l item">${e.itemID ? `<a href="#/item/${e.itemID}" data-tt="${e.itemID}">${esc(e.name || D.names[e.itemID] || e.itemID)}</a>` : esc(e.name || "?")}</td><td>${e.qty ?? ""}</td><td>${e.kind === "sell" ? money((e.price || 0) - (e.cut || 0)) : money(e.price)}</td><td class="l mut">${esc((e.char || "").split("-")[0])}</td></tr>`).join("")}
+      </tbody></table></div>
+    </section>`;
+  lineChart($("#goldChart"), g, "Gold over time");
+}
+
+// ---------- best hours ----------
+function renderHours() {
+  const liquid = rows().filter((r) => (r.soldPerDay || 0) >= 5 && (r.saleRate || 0) >= 0.3).map((r) => r.id);
+  const hp = profile(liquid, hourOf, 24), bh = bestOf(hp, HOURS);
+  const cells = profile(liquid, (d) => dayOf(d) * 24 + d.getHours(), 168);
+  const m = Math.max(0.02, ...cells.filter((v) => v != null).map(Math.abs));
+  const filled = cells.filter((v) => v != null).length;
+  $("#view").innerHTML = `
+    <h1 style="margin-bottom:6px">When is the auction house cheap?</h1>
+    <p class="mut" style="max-width:72ch;margin-bottom:24px">Across ${liquid.length.toLocaleString()} items that sell 5 or more a day in EU on ${esc(D.realms[S.realm].label)}: how the cheapest listing compares with each item's usual price. Buy in the green hours, list in the red ones. Your local time.</p>
+    <section class="panel">
+      <h3>Every day, by hour</h3>
+      <p class="sub">${hp.filter((v) => v != null).length} of 24 hours have data so far.</p>
+      ${strip(hp, HOURS)}${keyHtml}
+      <p class="callout">${bh ? `Cheapest at <b>${bh.cheap[1].replace("h", ":00")}</b> (${pct(-bh.cheap[0], false)} under usual), dearest at <b>${bh.dear[1].replace("h", ":00")}</b> (${pct(bh.dear[0], false)} over).` : "TSM updates every few hours, so a full day of hours takes a day or two to fill in."}</p>
+    </section>
+    <section class="panel" style="margin-top:16px">
+      <h3>Day and hour</h3>
+      <p class="sub">${filled} of 168 slots have data. After a week this shows patterns like raid nights and weekend dumps.</p>
+      <div class="heat">
+        <span></span>${HOURS.map((h, i) => `<span style="text-align:center">${i % 3 ? "" : h}</span>`).join("")}
+        ${DAYS.map((d, di) => `<span>${d}</span>${HOURS.map((h, hi) => { const v = cells[di * 24 + hi]; return `<div style="background:${heatColor(v, m)}" title="${d} ${h}: ${v == null ? "no data yet" : pct(v)}"></div>`; }).join("")}`).join("")}
+      </div>
+      ${keyHtml}
+    </section>`;
+}
+
+// ---------- collector ----------
+function renderCollector() {
+  const st = D.status, c = st.cadence, g = st.gaps;
+  const R = D.realms[S.realm];
+  const now = Date.now() / 60000, from = now - 3 * 1440;
+  const tl = (times) => times.filter((t) => t >= from).map((t) => `<b style="left:${((t - from) / (now - from) * 100).toFixed(2)}%" title="${when(t * 60000)}"></b>`).join("");
+  const dayMarks = [3, 2, 1, 0].map((d) => { const t = now - d * 1440; return `<span style="left:${((t - from) / (now - from) * 100).toFixed(1)}%">${d ? new Date(t * 60000).toLocaleDateString([], { weekday: "short" }) : "now"}</span>`; }).join("");
+  const decision = c ? (c.medianMin ? `On ${when(Date.parse(c.decidedAt))} TSM was updating about every ${c.medianMin} min, so checks moved to every ${c.intervalMin} min.` : "Too few TSM updates in the first day, so checks stay at every 30 min.") + (c.error ? ` Changing the task failed: ${esc(c.error)}` : "")
+    : `After 24 hours of checks (${st.firstPoll ? when(Date.parse(st.firstPoll) + 86400000) : "–"}), checks move to TSM's own update rhythm.`;
+  $("#view").innerHTML = `
+    <h1 style="margin-bottom:6px">Collector</h1>
+    <p class="mut" style="max-width:72ch;margin-bottom:24px">Every ${st.intervalMin} minutes a Windows task downloads TradeSkillMaster's free public price files and saves each new version. This page rebuilds after every check.</p>
+    <div class="cols" style="margin-top:0">
+      <section class="panel">
+        <h3>Checks</h3>
+        <dl class="facts">
+          <dt>Running since</dt><dd>${st.firstPoll ? when(Date.parse(st.firstPoll)) : "–"}</dd>
+          <dt>Last check</dt><dd>${st.lastPoll ? `${hhmm(Date.parse(st.lastPoll))}, ${ago(Date.parse(st.lastPoll))}` : "–"}</dd>
+          <dt>Checks done</dt><dd>${st.polls}</dd>
+          <dt>Checks every</dt><dd>${st.intervalMin} min</dd>
+        </dl>
+        <p class="sub" style="margin:12px 0 0">${decision}</p>
+      </section>
+      <section class="panel">
+        <h3>TSM updates</h3>
+        <dl class="facts">
+          ${st.sources.map((s) => { const RR = D.realms[s.id]; const t = RR ? RR.t : s.kind === "region" ? D.region.t : null; return `<dt>${esc(s.label)}</dt><dd>${t ? `${when(t)}${RR ? `, ${RR.snapshots} saved` : ""}` : "nothing yet"}</dd>`; }).join("")}
+          <dt>Time between updates</dt><dd>${g.count ? `${Math.round(g.min)} to ${Math.round(g.max)} min, usually ${Math.round(g.median)}` : "needs two updates"}</dd>
+        </dl>
+      </section>
+    </div>
+    <section class="panel" style="margin-top:16px">
+      <h3>Updates saved, last 3 days</h3>
+      <p class="tl-label">${esc(R.label)}</p>
+      <div class="timeline">${dayMarks}${tl(R.times)}</div>
+      ${st.errors.length ? `<h3 style="margin-top:8px">Recent problems</h3><dl class="facts">${st.errors.map((e) => `<dt>${when(Date.parse(e.t))}, ${esc(e.source)}</dt><dd class="neg">${esc(e.error)}</dd>`).join("")}</dl>` : `<p class="sub" style="margin:0">No download problems.</p>`}
+    </section>
+    <p class="mut" style="margin-top:20px;font-size:13px">Prices are TradeSkillMaster's estimates from tradeskillmaster.com/public-data. Page built ${when(D.generatedAt)}.</p>`;
+}
+
+// ---------- routing ----------
+function route() {
+  const [, page = "", id] = (location.hash.slice(1) || "/").split("/");
+  return { page: ["item", "hours", "collector", "ledger"].includes(page) ? page : "board", id };
+}
+function render() {
+  const r = route();
+  renderTop(r.page === "item" ? "board" : r.page);
+  if (r.page === "item") { renderItem(r.id); window.scrollTo(0, 0); }
+  else if (r.page === "hours") { renderHours(); window.scrollTo(0, 0); }
+  else if (r.page === "ledger") { renderLedger(); window.scrollTo(0, 0); }
+  else if (r.page === "collector") { renderCollector(); window.scrollTo(0, 0); }
+  else { renderBoard(); requestAnimationFrame(() => window.scrollTo(0, S.scroll)); }
+}
+let lastPage = route().page;
+window.addEventListener("hashchange", () => {
+  if (lastPage === "board") S.scroll = window.scrollY;
+  lastPage = route().page;
+  render();
+});
+
+// ---------- events ----------
+document.addEventListener("click", (e) => {
+  const star = e.target.closest("[data-star]");
+  if (star) {
+    const id = star.dataset.star;
+    S.watch.has(id) ? S.watch.delete(id) : S.watch.add(id);
+    store.set("watch", [...S.watch]);
+    if (route().page === "item") renderItem(id); else renderBoard();
+    return;
+  }
+  const realmBtn = e.target.closest("[data-r]");
+  if (realmBtn) { S.realm = realmBtn.dataset.r; store.set("ah", S.realm); S.shown = PAGE; render(); return; }
+  const tab = e.target.closest("[data-tab]");
+  if (tab) { S.tab = tab.dataset.tab; S.shown = PAGE; saveBoard(); renderBoard(); return; }
+  const sort = e.target.closest("[data-sort]");
+  if (sort) { const k = sort.dataset.sort; if (k === S.sortKey) S.sortDir = -S.sortDir; else { S.sortKey = k; S.sortDir = k === "name" ? 1 : -1; } saveBoard(); renderTable(); return; }
+  if (e.target.id === "moreBtn") { S.shown += PAGE; renderTable(); return; }
+  const go = e.target.closest("[data-go]");
+  if (go && !e.target.closest("a, button")) location.hash = `#/item/${go.dataset.go}`;
+});
+document.addEventListener("input", (e) => {
+  const map = { fSold: "minSold", fRate: "minRate", fProfit: "minProfit" };
+  if (map[e.target.id]) { S[map[e.target.id]] = +e.target.value || 0; S.shown = PAGE; saveBoard(); renderBoard(); const el = $("#" + e.target.id); el.focus(); el.setSelectionRange?.(el.value.length, el.value.length); }
+});
+
+// search: filters the board as you type, Enter or a suggestion opens the item page
+const q = $("#q"), sug = $("#suggest");
+let sel = -1, matches = [];
+function suggest() {
+  const t = q.value.trim().toLowerCase();
+  matches = t ? rows().filter((r) => r.name.toLowerCase().includes(t)).sort((a, b) => (a.name.toLowerCase().startsWith(t) ? 0 : 1) - (b.name.toLowerCase().startsWith(t) ? 0 : 1) || (b.soldPerDay || 0) - (a.soldPerDay || 0)).slice(0, 8) : [];
+  sel = matches.length ? 0 : -1;
+  sug.innerHTML = matches.map((r, i) => `<li role="option" id="opt${i}" aria-selected="${i === sel}" data-id="${r.id}" data-tt="${r.id}"><span>${esc(r.name)}</span>${money(r.minBuy)}</li>`).join("");
+  sug.classList.toggle("open", matches.length > 0);
+  q.setAttribute("aria-expanded", matches.length > 0);
+}
+const openItem = (id) => { q.value = ""; S.q = ""; sug.classList.remove("open"); q.blur(); location.hash = `#/item/${id}`; };
+q.addEventListener("input", () => {
+  S.q = q.value; S.shown = PAGE;
+  suggest();
+  if (route().page === "board") { const t = $("#table"); if (t) { renderTable(); } }
+});
+q.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (!matches.length) return;
+    sel = (sel + (e.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
+    sug.querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", i === sel));
+  } else if (e.key === "Enter" && matches[sel]) openItem(matches[sel].id);
+  else if (e.key === "Escape") { sug.classList.remove("open"); q.blur(); }
+});
+q.addEventListener("blur", () => setTimeout(() => sug.classList.remove("open"), 150));
+q.addEventListener("focus", () => { if (q.value) suggest(); });
+sug.addEventListener("mousedown", (e) => { const li = e.target.closest("li"); if (li) openItem(li.dataset.id); });
+document.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); q.focus(); } });
+
+// served by Gold Board: reload when the collector has built a newer page (does nothing when opened as a file)
+if (location.protocol.startsWith("http")) {
+  let seen = null;
+  setInterval(async () => {
+    try {
+      const v = await (await fetch("/version", { cache: "no-store" })).text();
+      if (seen && v !== seen && document.activeElement !== q) location.reload();
+      seen = v;
+    } catch {}
+  }, 60000);
+}
+
+if (!realmIds.length) $("#view").innerHTML = '<p class="empty">No prices yet. The collector saves its first TSM update within 30 minutes.</p>';
+else render();
+</script>
+</body>
+</html>

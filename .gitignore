@@ -1,0 +1,5 @@
+# your own collected prices, ledger and the page built from them stay on your PC
+board/data/
+board/dashboard.html
+board/config.local.json
+node_modules/

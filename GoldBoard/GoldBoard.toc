@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: Gold Board
+## Notes: Auction house ledger for WoW Forever: records your gold, buys, sales and Auctionator's full scans for the Gold Board dashboard, and shows its buy/sell signals in tooltips and at the auction house.
+## Version: 1.0.0
+## Author: Gold Board
+## IconTexture: Interface\Icons\INV_Misc_Coin_02
+## SavedVariables: GoldBoardDB
+## OptionalDeps: Auctionator, Syndicator
+## X-Flavor: Forever
+
+Core.lua
+Ledger.lua
+Scans.lua
+SignalsData.lua
+Signals.lua
+Tooltip.lua
+Panel.lua
