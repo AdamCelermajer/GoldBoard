@@ -2,7 +2,10 @@
 
 A gold-making companion for **WoW Forever**, in two parts that work together:
 
-- **`GoldBoard/`** is the in-game addon. It records your gold over time, every auction house buy, sale, post, cancel and expiry, and a copy of each Auctionator full scan. It shows the dashboard's signals in item tooltips ("sells for", "buy below", trend, what you paid for the ones you hold) and in a small panel beside the auction house.
+- **`GoldBoard/`** is the in-game addon, a TSM-style companion that runs alongside Auctionator:
+  - **`/gb` window:** gold over time, your ledger of every buy, sale, post, cancel and expiry, what you hold and what it would make now, and **groups** of items with pricing rules (minimum, normal, maximum as a % of the item's value, undercut, stack size, stacks, keep, duration).
+  - **Beside the auction house:** **Shop** (deals under your buy-below price, any item's live listings, buy the exact listing you pick), **Post** (scans your groups' items in your bags and prices them by the rules; one click posts the next), **Cancel** (finds your auctions someone undercut; one click cancels the next).
+  - It keeps a copy of each Auctionator full scan, hands Auctionator's daily price history and your groups to the dashboard, and shows the dashboard's signals in item tooltips.
 - **`board/`** runs on your PC. Every few hours it downloads TradeSkillMaster's free public price files for your auction houses, keeps every version, and builds a local dashboard: deals, price history per item, cheap and expensive hours, your ledger and holdings. It writes the signals the addon shows in game.
 
 ```
@@ -12,15 +15,15 @@ A gold-making companion for **WoW Forever**, in two parts that work together:
 │ gold, buys, sales,     │  (/reload or  │ ledger, profit, holdings │
 │ Auctionator scans      │   logout)     │ + TSM prices and history │
 │                        │ ◀──────────── │                          │
-│ tooltips, AH panel     │ SignalsData   │ writes buy below/sell at │
+│ tooltips, AH window    │ SignalsData   │ writes buy below/sell at │
 └────────────────────────┘  .lua         └──────────────────────────┘
 ```
 
-Nothing here buys, posts or clicks for you: you trade with Auctionator as usual.
+Every buy, post and cancel is one click of yours (the game requires it); Gold Board does the searching, pricing and finding. Auctionator keeps doing its full scans and simple selling.
 
 ## Install
 
-**Addon:** copy the `GoldBoard` folder into `World of Warcraft\_forever_\Interface\AddOns\`. It works on its own; with **Auctionator** it also records posts and full scans, and with **Syndicator** (comes with Baganator) it knows how many of an item you hold across characters.
+**Addon:** copy the `GoldBoard` folder into `World of Warcraft\_forever_\Interface\AddOns\` and restart the game. It works on its own; with **Auctionator** it also reads its full scans, price history and posts, and with **Syndicator** (comes with Baganator) it knows how many of an item you hold across characters.
 
 **Dashboard** (Windows, needs [Node.js](https://nodejs.org) 18 or newer, no other packages):
 
@@ -35,7 +38,8 @@ Remove the task with `Unregister-ScheduledTask -TaskName 'TSM Forever Collector'
 
 ## In game
 
-- `/gb` shows or hides the panel at the auction house: your items with the gain if you sold now, and the best buys at the last TSM update. Click a row to search it in Auctionator.
+- `/gb` opens the Gold Board window (Overview, Ledger, Inventory, Groups). Make a group, click items from your bags into it, and set its rules.
+- At the auction house the Gold Board window opens beside it with Shop, Post and Cancel. `/gb auction`, or the Gold Board button on the auction house, hides or shows it.
 - `/gb ah roleplay-alliance` sets which auction house's prices this realm uses (the default is `roleplay-alliance`).
 - `/gb tooltip` turns the tooltip lines off or on, `/gb status` says what has been recorded.
 
@@ -57,7 +61,7 @@ Signals load at login and `/reload`; your trades reach the dashboard after a `/r
 
 ## Files
 
-- `GoldBoard/`: the addon (`Core.lua` saved data and gold, `Ledger.lua` trades, `Scans.lua` Auctionator scans, `Signals.lua` + `SignalsData.lua` dashboard signals, `Tooltip.lua`, `Panel.lua`).
+- `GoldBoard/`: the addon (`Core.lua` saved data and gold, `Ledger.lua` trades, `Scans.lua` Auctionator scans, `Sync.lua` Auctionator history for the dashboard, `Signals.lua` + `SignalsData.lua` dashboard signals, `Groups.lua` groups and pricing rules, `Tooltip.lua`, `UI/` the look and the `/gb` window, `AH/` auction house searches and the Shop, Post and Cancel window).
 - `board/collect.js`: downloads TSM's files, keeps each new version, sets the check interval, builds the page.
 - `board/ledger.js`: reads the addon's saved data, keeps the ledger, writes `SignalsData.lua` into the installed addon.
 - `board/dashboard.js` + `dashboard.template.html`: the dashboard.

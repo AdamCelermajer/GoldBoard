@@ -22,7 +22,7 @@ local function Add(entry)
   if entry.name and entry.itemID then GB.LearnName(entry.name, entry.itemID) end
   entry.itemID = entry.itemID or GB.IDFromName(entry.name)
   GB.db.ledger[#GB.db.ledger + 1] = entry
-  if GB.Panel and GB.Panel.Refresh then GB.Panel.Refresh() end
+  if GB.Main and GB.Main.Refresh then GB.Main.Refresh() end
   return entry
 end
 L.Add = Add

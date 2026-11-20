@@ -515,6 +515,7 @@ function renderItem(id) {
       <div><dt>Buy below</dt><dd>${money(r.buyBelow)}</dd></div>
     </dl>
     <p class="verdict-line">${verdict}${sales}${hourLine}</p>
+    ${itemGroup(r.id, r.sell)}
     <div class="itemgrid">
       <section class="panel">
         <h3>Price since the collector started</h3>
@@ -579,6 +580,25 @@ function itemTrades(id) {
     </tbody></table></div></section>`;
 }
 
+// Auctionator's daily history for this item (it records one low and high per day), when it's for this auction house
+function auctionatorDays(id) {
+  const a = D.auctionator;
+  if (!a || !a.items || (a.ah && a.ah !== S.realm)) return [];
+  return a.items[id] || [];
+}
+
+// the group this item is in (Gold Board addon) and the prices its rules give
+function itemGroup(id, sell) {
+  for (const [name, g] of Object.entries(D.groups || {})) {
+    if (g.items && (g.items[id] || g.items[Number(id)])) {
+      const r = g.rules || {};
+      const p = (pc) => sell && pc ? money(sell * pc / 100) : "-";
+      return `<p class="verdict-line" style="margin-top:-14px">In your group <b>${esc(name)}</b>: posts between ${p(r.min)} and ${p(r.max)}, ${p(r.normal)} when nobody else sells it.</p>`;
+    }
+  }
+  return "";
+}
+
 // your own Auctionator scans of this item on this auction house: [[minutes, cheapest, quantity], ...]
 function myScanPoints(id) {
   const s = D.myScans && D.myScans[S.realm];
@@ -591,13 +611,14 @@ function mountChart(el, r) {
   const R = D.realms[S.realm], T = R.times, a = R.minB[r.id] || [], b = R.mkt[r.id] || [];
   const idx = T.map((_, k) => k).filter((k) => a[k] > 0 || b[k] > 0);
   const mine = myScanPoints(r.id);   // your own Auctionator scans (Gold Board addon)
-  if (idx.length + mine.length < 2) {
+  const acd = auctionatorDays(r.id).filter((d) => d[1] > 0);   // Auctionator's daily lows
+  if (idx.length + mine.length + acd.length < 2) {
     el.innerHTML = `<p class="empty">The chart starts with the second TSM update for this item. TSM updates about every few hours, so check back soon.</p>`;
     return;
   }
   const W = 900, H = 300, L = 70, Rm = 16, Tm = 14, B = 30;
-  const ys = idx.flatMap((k) => [a[k], b[k]]).filter((v) => v > 0).concat(r.buyBelow > 0 ? [r.buyBelow] : [], mine.map((m) => m[1]));
-  const xs = idx.map((k) => T[k]).concat(mine.map((m) => m[0]));
+  const ys = idx.flatMap((k) => [a[k], b[k]]).filter((v) => v > 0).concat(r.buyBelow > 0 ? [r.buyBelow] : [], mine.map((m) => m[1]), acd.map((d) => d[1]));
+  const xs = idx.map((k) => T[k]).concat(mine.map((m) => m[0]), acd.map((d) => d[0]));
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   const y0 = Math.min(...ys) * 0.94, y1 = Math.max(...ys) * 1.04;
   const X = (t) => L + (t - x0) / (x1 - x0 || 1) * (W - L - Rm);
@@ -619,13 +640,14 @@ function mountChart(el, r) {
       ${grid}${dayTicks}${below}
       <path d="${path(b)}" fill="none" stroke="var(--muted)" stroke-width="2"/>
       <path d="${path(a)}" fill="none" stroke="var(--brass)" stroke-width="2.5"/>
+      ${acd.map(([t, lo, hi, av]) => `<rect x="${(X(t) - 4).toFixed(1)}" y="${(Y(lo) - 4).toFixed(1)}" width="8" height="8" fill="var(--muted)" opacity="0.8"><title>Auctionator ${new Date(t * 60000).toLocaleDateString()}: lowest ${plain(lo)}, highest ${plain(hi)}${av != null ? `, ${av} up` : ""}</title></rect>`).join("")}
       ${mine.map(([t, v, q]) => `<circle cx="${X(t).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4" fill="var(--panel)" stroke="var(--brass)" stroke-width="2"><title>Your scan ${when(t * 60000)}: ${plain(v)}, ${q} listed</title></circle>`).join("")}
       <line id="cross" y1="${Tm}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>
       <circle id="dotA" r="4.5" fill="var(--brass)" visibility="hidden"/>
       <rect x="${L}" y="0" width="${W - L - Rm}" height="${H}" fill="transparent" id="hit"/>
     </svg>
     <div class="tip" id="tip"></div>
-    <div class="legend"><span><i style="background:var(--brass)"></i>Cheapest listing</span><span><i style="background:var(--muted)"></i>Market value</span>${mine.length ? `<span><i style="background:none;border:2px solid var(--brass);width:9px;height:9px;border-radius:50%"></i>Your scans (${mine.length})</span>` : ""}${below ? `<span><i class="dash"></i>Buy below ${plain(r.buyBelow)}</span>` : ""}</div>`;
+    <div class="legend"><span><i style="background:var(--brass)"></i>Cheapest listing</span><span><i style="background:var(--muted)"></i>Market value</span>${mine.length ? `<span><i style="background:none;border:2px solid var(--brass);width:9px;height:9px;border-radius:50%"></i>Your scans (${mine.length})</span>` : ""}${acd.length ? `<span><i style="background:var(--muted);width:8px;height:8px;border-radius:1px"></i>Auctionator daily low (${acd.length} days)</span>` : ""}${below ? `<span><i class="dash"></i>Buy below ${plain(r.buyBelow)}</span>` : ""}</div>`;
   const svg = $("svg", el), tip = $("#tip", el), cross = $("#cross", el), dot = $("#dotA", el);
   const show = (evt) => {
     const box = svg.getBoundingClientRect();
@@ -721,8 +743,17 @@ function lineChart(el, pts, label) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${ticks}<path d="${d}" fill="none" stroke="var(--brass)" stroke-width="2.5"/></svg>`;
 }
 
+function groupsPanel() {
+  const gs = Object.entries(D.groups || {});
+  if (!gs.length) return "";
+  return `<section class="panel" style="margin-top:16px"><h3>Your groups</h3><p class="sub">Set up in game with /gb, Groups. Prices are % of what each item sells for.</p>
+    <div class="table"><table><thead><tr><th class="l">Group</th><th>Items</th><th>Minimum</th><th>Normal</th><th>Maximum</th><th>Stacks</th></tr></thead><tbody>
+    ${gs.map(([name, g]) => { const r = g.rules || {}; const n = Object.keys(g.items || {}).length; return `<tr><td class="l">${esc(name)}</td><td>${n}</td><td>${r.min ?? "-"}%</td><td>${r.normal ?? "-"}%</td><td>${r.max ?? "-"}%</td><td>${r.stacks ?? "-"} x ${r.stack ?? "-"}</td></tr>`; }).join("")}
+    </tbody></table></div></section>`;
+}
+
 function renderLedger() {
-  if (!LEDGER.length && !Object.keys(D.gold || {}).length) {
+  if (!LEDGER.length && !Object.keys(D.gold || {}).length && !Object.keys(D.groups || {}).length) {
     $("#view").innerHTML = `<h1 style="margin-bottom:6px">Ledger</h1>
       <p class="empty" style="text-align:left;max-width:72ch;padding-left:0">Nothing recorded yet. The Gold Board addon (the <b>GoldBoard</b> folder in Interface\\AddOns) records your gold, buys and sales while you play.
       This page fills in after your next /reload or logout.</p>`;
@@ -767,6 +798,7 @@ function renderLedger() {
         ${per.filter((p) => p.sold).sort((a, b) => b.realized - a.realized).map((p) => `<tr><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.bought}</td><td>${p.sold}</td><td>${money(p.cost)}</td><td>${money(p.proceeds)}</td><td class="${p.realized >= 0 ? "pos" : "neg"}">${money(p.realized, { sign: true })}</td></tr>`).join("")}
       </tbody></table></div>` : `<p class="empty">No sales recorded yet.</p>`}
     </section>
+    ${groupsPanel()}
     <section class="panel" style="margin-top:16px">
       <h3>Recent activity</h3>
       <div class="table"><table><thead><tr><th class="l">When</th><th class="l">What</th><th class="l">Item</th><th>Qty</th><th>Price</th><th class="l">Character</th></tr></thead><tbody>

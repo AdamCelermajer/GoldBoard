@@ -25,6 +25,8 @@ function ingest(log = () => {}) {
   const gold = readJson(GOLD, {});
   let newEntries = 0, newScans = 0;
   const holdings = {}, names = {};
+  let groups = null;
+  const auctionator = readJson(path.join(DIR, "auctionator.json"), { items: {} });
   for (const file of files) {
     let db;
     try { db = parseSavedVariables(fs.readFileSync(file, "utf8")).GoldBoardDB; } catch (e) { log(`goldboard: could not read the addon's saved data: ${e.message}`); continue; }
@@ -51,6 +53,21 @@ function ingest(log = () => {}) {
       newScans++;
     }
     Object.assign(holdings, db.holdings || {});
+    if (db.groups) groups = db.groups;
+    // Auctionator's daily lows and highs, merged by day (Auctionator itself only keeps recent days)
+    const a = db.auctionator;
+    if (a && a.items && a.day0) {
+      auctionator.day0 = a.day0;
+      auctionator.ah = a.ah || auctionator.ah;
+      auctionator.t = Math.max(auctionator.t || 0, a.t || 0);
+      for (const [id, s] of Object.entries(a.items)) {
+        const days = auctionator.items[id] || (auctionator.items[id] = {});
+        for (const part of String(s).split(",")) {
+          const [day, low, high, avail] = part.split(":");
+          if (day && Number(low) > 0) days[day] = [Number(low), Number(high) || Number(low), avail === "" ? null : Number(avail)];
+        }
+      }
+    }
     Object.assign(names, db.names || {});
   }
   const merged = [...byId.values()].sort((a, b) => (a.t || 0) - (b.t || 0));
@@ -58,6 +75,8 @@ function ingest(log = () => {}) {
   fs.writeFileSync(GOLD, JSON.stringify(gold));
   fs.writeFileSync(path.join(DIR, "holdings.json"), JSON.stringify(holdings));
   fs.writeFileSync(path.join(DIR, "names.json"), JSON.stringify(names));
+  if (groups) fs.writeFileSync(path.join(DIR, "groups.json"), JSON.stringify(groups));
+  fs.writeFileSync(path.join(DIR, "auctionator.json"), JSON.stringify(auctionator));
   if (newEntries || newScans) log(`goldboard: ${newEntries} new ledger entries, ${newScans} new scans from the game`);
   return { found: true, newEntries, newScans };
 }
@@ -83,6 +102,8 @@ const load = () => ({
   gold: readJson(GOLD, {}),
   holdings: readJson(path.join(DIR, "holdings.json"), {}),
   names: readJson(path.join(DIR, "names.json"), {}),
+  groups: readJson(path.join(DIR, "groups.json"), {}),
+  auctionator: readJson(path.join(DIR, "auctionator.json"), { items: {} }),
 });
 
 // SignalsData.lua for the installed addon: per auction house, "sell:buyBelow:market:minBuy:trend:soldPerDay"

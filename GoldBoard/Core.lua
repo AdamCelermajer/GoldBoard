@@ -10,7 +10,7 @@
 local ADDON, GB = ...
 _G.GoldBoard = GB
 
-GB.version = "1.0.0"
+GB.version = "2.0.0"
 GB.DEFAULT_AH = "roleplay-alliance"   -- the TSM auction house id (ruleset-faction) prices come from
 
 local GOLD_SAMPLE_SEC = 300   -- at most one gold sample per character every 5 minutes (the newest replaces it)
@@ -91,7 +91,6 @@ local function InitDB()
   db.realmAH = db.realmAH or {}   -- [realm name] = TSM auction house id
   db.settings = db.settings or {}
   if db.settings.tooltip == nil then db.settings.tooltip = true end
-  if db.settings.panel == nil then db.settings.panel = true end
   GB.db = db
 end
 
@@ -148,7 +147,8 @@ ev:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 local HELP = {
-  "/gb - show or hide the Gold Board panel at the auction house",
+  "/gb - open the Gold Board window: overview, ledger, inventory, groups",
+  "/gb auction - show or hide the Gold Board window beside the auction house (Shop, Post, Cancel)",
   "/gb ah <id> - the TSM auction house this realm uses (now %s), e.g. roleplay-alliance, normal-alliance",
   "/gb tooltip - toggle the Gold Board lines in item tooltips",
   "/gb status - what has been recorded so far",
@@ -159,7 +159,9 @@ SLASH_GOLDBOARD2 = "/goldboard"
 SlashCmdList.GOLDBOARD = function(msg)
   local cmd, arg = (msg or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
-    if GB.Panel then GB.Panel.Toggle() end
+    GB.Main.Toggle()
+  elseif cmd == "auction" or cmd == "ah" and arg == "" then
+    GB.AHWindow.Toggle()
   elseif cmd == "ah" and arg ~= "" then
     GB.db.realmAH[GetRealmName() or "?"] = arg
     GB.Print("prices for " .. (GetRealmName() or "this realm") .. " now come from " .. arg .. ". /reload to load them.")

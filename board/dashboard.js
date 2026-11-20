@@ -102,8 +102,15 @@ function buildDashboard(state) {
     status.signals = file ? { written: Date.now(), items: Object.values(signals).reduce((n, s) => n + Object.keys(s.items).length, 0) } : null;
   } catch (e) { status.signals = { error: e.message }; }
 
+  // Auctionator's daily history per item as [minute, low, high, available] (its days start at day0)
+  const ac = game.auctionator || { items: {} };
+  const auctionator = { ah: ac.ah || null, items: {} };
+  if (ac.day0) for (const [id, days] of Object.entries(ac.items)) {
+    auctionator.items[id] = Object.entries(days).map(([d, v]) => [Math.round((Number(d) * 86400 + ac.day0) / 60), ...v])
+      .sort((a, b) => a[0] - b[0]);
+  }
   const data = { generatedAt: Date.now(), status, names, region, realms, ledger: game.ledger, gold: game.gold,
-                 holdings: game.holdings, myScans };
+                 holdings: game.holdings, myScans, groups: game.groups, auctionator };
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
   const html = fs.readFileSync(path.join(ROOT, "dashboard.template.html"), "utf8").replace("/*__DATA__*/null", json);
   fs.writeFileSync(OUT, html);
