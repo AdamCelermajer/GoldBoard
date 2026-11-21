@@ -35,7 +35,7 @@ function S.ExportAuctionator()
       end
     end
   end
-  GB.db.auctionator = { t = time(), day0 = day0, ah = GB.AH(), realm = GetRealmName(), items = items }
+  GB.db.auctionator = { t = time(), day0 = day0, ah = GB.AH(), realm = GB.Realm(), items = items }
 end
 
 local f = CreateFrame("Frame")

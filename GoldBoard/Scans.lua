@@ -15,10 +15,26 @@ local MAX_SCANS = 30
 
 local function Summarize(raw)
   local items = {}
-  for _, entry in ipairs(raw) do
-    local info = entry.auctionInfo
+  -- pairs, not ipairs: Auctionator leaves holes where the game returned an auction with no item data
+  for _, entry in pairs(raw) do
+    -- its full ("replicate") scan gives one row per auction; its normal scan one summary row per item
+    local info = type(entry) == "table" and (entry.replicateInfo or entry.auctionInfo)
     local count, buyout, owner, itemID = info and info[3], info and info[10], info and info[14], info and info[17]
-    if itemID and itemID > 0 and count and count > 0 and buyout and buyout > 0 then
+    local summaryID = not info and type(entry) == "table" and type(entry.itemKey) == "table" and entry.itemKey.itemID
+    if summaryID and type(summaryID) == "number" and summaryID > 0 and (entry.minPrice or 0) > 0 and (entry.totalQuantity or 0) > 0 then
+      local id = summaryID
+      local it = items[id]
+      if not it then
+        it = { listings = {}, sellers = {}, nSellers = 0, qty = 0, auctions = 0 }
+        items[id] = it
+        -- these rows carry no name: the game's item cache has it when the item has been seen (no request made)
+        local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+        if name then GB.LearnName(name, id) end
+      end
+      -- a summary: the cheapest price and how many are up at it or above (no auction or seller counts)
+      it.listings[#it.listings + 1] = { unit = entry.minPrice, qty = entry.totalQuantity }
+      it.qty = it.qty + entry.totalQuantity
+    elseif itemID and itemID > 0 and count and count > 0 and buyout and buyout > 0 then
       local it = items[itemID]
       if not it then
         it = { listings = {}, sellers = {}, nSellers = 0, qty = 0, auctions = 0 }
@@ -47,19 +63,30 @@ local function Summarize(raw)
 end
 
 local function OnScanComplete(raw)
-  if type(raw) ~= "table" or #raw == 0 then return end
+  if type(raw) ~= "table" or next(raw) == nil then return end
   local data, n = Summarize(raw)
   local scans = GB.db.scans
-  scans[#scans + 1] = { t = time(), ah = GB.AH(), realm = GetRealmName(), auctions = #raw, items = n, data = data }
+  if n == 0 then return end
+  local rows = 0
+  for _ in pairs(raw) do rows = rows + 1 end
+  scans[#scans + 1] = { t = time(), ah = GB.AH(), realm = GB.Realm(), auctions = rows, items = n, data = data }
   while #scans > MAX_SCANS do table.remove(scans, 1) end
   GB.Print(string.format("saved this auction house scan (%d items) for the Gold Board.", n))
 end
 
 function S.Init()
   local bus = Auctionator and Auctionator.EventBus
-  local events = Auctionator and Auctionator.FullScan and Auctionator.FullScan.Events
-  if not (bus and events and events.ScanComplete) then return end
-  pcall(bus.Register, bus, { ReceiveEvent = function(_, eventName, raw)
-    if eventName == events.ScanComplete then OnScanComplete(raw) end
-  end }, { events.ScanComplete })
+  if not bus then return end
+  -- both of Auctionator's scans: the full one and the normal ("incremental") one it runs by default
+  for _, kind in ipairs({ "FullScan", "IncrementalScan" }) do
+    local events = Auctionator[kind] and Auctionator[kind].Events
+    if events and events.ScanComplete then
+      pcall(bus.Register, bus, { ReceiveEvent = function(_, eventName, raw)
+        if eventName == events.ScanComplete then
+          local ok, err = pcall(OnScanComplete, raw)
+          if not ok then GB.Report(err, "saving the scan") end
+        end
+      end }, { events.ScanComplete })
+    end
+  end
 end

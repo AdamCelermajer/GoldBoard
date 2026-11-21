@@ -112,7 +112,7 @@ function buildDashboard(state) {
   const data = { generatedAt: Date.now(), status, names, region, realms, ledger: game.ledger, gold: game.gold,
                  holdings: game.holdings, myScans, auctionator };
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
-  const html = fs.readFileSync(path.join(ROOT, "dashboard.template.html"), "utf8").replace("/*__DATA__*/null", json);
+  const html = fs.readFileSync(path.join(ROOT, "dashboard.template.html"), "utf8").replace("/*__DATA__*/null", () => json);   // a function: "$&" and the like in the data stay as they are
   fs.writeFileSync(OUT, html);
   return OUT;
 }

@@ -3,145 +3,176 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12100d">
+<meta name="color-scheme" content="dark">
 <title>Gold Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* One palette for the dashboard and the in-game addon: warm charcoal, gold for what matters,
+   green for cheap / profit / buy, red for dear / loss / sell, off-white text. Always dark. */
 :root {
-  --bg: #edf2ef; --panel: #ffffff; --panel2: #f4f7f5; --line: #d3dfda; --ink: #13262e; --muted: #557079;
-  --brass: #9b6b0e; --buy: #13806b; --sell: #c24527; --gold: #a8740c; --silver: #6b7a80; --copper: #a3582a;
-  --focus: #1b6fd1;
+  color-scheme: dark;
+  --bg: #12100d; --panel: #1a1713; --panel2: #24201a; --panel3: #312b22; --line: #3a3328;
+  --ink: #ece4d2; --muted: #a79d89; --faint: #776f5f;
+  --gold: #e0b44c; --brass: #e0b44c; --gold-ink: #17130c;
+  --buy: #6fbf73; --sell: #e0655a;
+  --silver: #c4c0b6; --copper: #c9814e;
+  --focus: #f3d78e;
   --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
   --text: "Barlow", system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f2530; --panel: #15313d; --panel2: #1b3b48; --line: #26495a; --ink: #ebe5d3; --muted: #9db3b5;
-    --brass: #d9ab4f; --buy: #5cc4ad; --sell: #ef7a5c; --gold: #e6bb52; --silver: #c9d2d6; --copper: #d08a55;
-    --focus: #8cc8ff;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f2530; --panel: #15313d; --panel2: #1b3b48; --line: #26495a; --ink: #ebe5d3; --muted: #9db3b5;
-  --brass: #d9ab4f; --buy: #5cc4ad; --sell: #ef7a5c; --gold: #e6bb52; --silver: #c9d2d6; --copper: #d08a55;
-  --focus: #8cc8ff;
+  --r: 8px;
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--text); font-variant-numeric: tabular-nums; }
+html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--text); font-variant-numeric: tabular-nums; }
 a { color: inherit; }
 button, input { font: inherit; color: inherit; }
+::selection { background: color-mix(in srgb, var(--gold) 35%, transparent); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
-.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
 @media (max-width: 700px) { .wrap { padding: 0 16px; } }
 
 /* top bar */
-.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-top: 10px; padding-bottom: 10px; }
-.mark { font: 700 26px/1 var(--cond); letter-spacing: .3px; text-decoration: none; display: flex; align-items: center; gap: 8px; }
-.mark .coin { width: 16px; height: 16px; }
-nav.pages { display: flex; gap: 2px; }
-nav.pages a { text-decoration: none; padding: 6px 10px; border-radius: 4px; color: var(--muted); font-weight: 500; }
-nav.pages a[aria-current="page"] { color: var(--ink); background: var(--panel2); }
-.ah { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.ah button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; color: var(--muted); }
-.ah button[aria-pressed="true"] { background: var(--brass); color: var(--bg); font-weight: 600; }
-.search { position: relative; margin-left: auto; flex: 1 1 220px; max-width: 340px; }
-.search input { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px 7px 32px; }
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding-top: 12px; padding-bottom: 0; }
+.mark { font: 700 26px/1 var(--cond); letter-spacing: .4px; text-decoration: none; display: flex; align-items: center; gap: 9px; color: var(--gold); padding-bottom: 10px; }
+.mark .coin { width: 15px; height: 15px; }
+nav.pages { display: flex; gap: 2px; align-self: stretch; overflow-x: auto; scrollbar-width: none; }
+nav.pages::-webkit-scrollbar { display: none; }
+nav.pages a { text-decoration: none; padding: 6px 12px 14px; color: var(--muted); font-weight: 500; white-space: nowrap; border-bottom: 2px solid transparent; }
+nav.pages a:hover { color: var(--ink); }
+nav.pages a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--gold); }
+.ah { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 10px; background: var(--panel); }
+.ah button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; color: var(--muted); white-space: nowrap; }
+.ah button:hover { color: var(--ink); }
+.ah button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); font-weight: 600; }
+.search { position: relative; margin-left: auto; flex: 1 1 220px; max-width: 340px; margin-bottom: 10px; }
+.search input { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px 7px 32px; }
+.search input::placeholder { color: var(--faint); }
+.search input:focus { border-color: var(--gold); outline: none; }
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--muted); }
-.suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.25); list-style: none; margin: 0; padding: 4px 0; display: none; }
+.suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 14px 34px rgba(0,0,0,.55); list-style: none; margin: 0; padding: 4px 0; display: none; }
 .suggest.open { display: block; }
-.suggest li { padding: 6px 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
-.suggest li[aria-selected="true"], .suggest li:hover { background: var(--panel2); }
-.fresh { width: 100%; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.suggest li { padding: 7px 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--panel3); }
+.fresh { width: 100%; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 7px 0 8px; border-top: 1px solid var(--line); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--buy); }
 .dot.late { background: var(--sell); }
+@media (max-width: 700px) {
+  .top .wrap { gap: 6px 12px; padding-top: 10px; }
+  .mark { font-size: 23px; padding-bottom: 6px; }
+  nav.pages { order: 3; width: 100%; }
+  nav.pages a { padding: 6px 10px 10px; }
+  .ah { margin-left: auto; margin-bottom: 6px; }
+  .ah button { padding: 5px 9px; font-size: 14px; }
+  .search { order: 2; flex-basis: 100%; max-width: none; margin-bottom: 4px; }
+  .fresh { order: 4; font-size: 12px; }
+}
 
 /* money, drawn like the game does */
 .m { white-space: nowrap; }
 .m span + span { margin-left: .35em; }
-.coin { display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-left: .12em; vertical-align: .02em; box-shadow: inset 0 -1.5px 0 rgba(0,0,0,.25); }
+.coin { display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-left: .12em; vertical-align: .02em; box-shadow: inset 0 -1.5px 0 rgba(0,0,0,.3); }
 .coin.g { background: var(--gold); } .coin.s { background: var(--silver); } .coin.c { background: var(--copper); }
 .neg { color: var(--sell); } .pos { color: var(--buy); } .mut { color: var(--muted); }
 
-main { padding: 24px 0 64px; }
-h1, h2, h3 { font-family: var(--cond); font-weight: 600; line-height: 1.1; margin: 0; }
-h1 { font-size: 44px; } h2 { font-size: 28px; } h3 { font-size: 20px; }
+main.wrap { padding-top: 32px; padding-bottom: 72px; }
+h1, h2, h3 { font-family: var(--cond); font-weight: 600; line-height: 1.1; margin: 0; letter-spacing: .1px; }
+h1 { font-size: clamp(32px, 6vw, 44px); } h2 { font-size: clamp(24px, 4.5vw, 30px); } h3 { font-size: 20px; }
 p { margin: 0; }
+@media (max-width: 700px) { main.wrap { padding-top: 22px; padding-bottom: 56px; } }
 
 /* board: today's best flips */
-.ledger { margin: 0 0 32px; }
-.ledger header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 10px; }
+.ledger { margin: 0 0 36px; }
+.ledger header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 12px; }
+.ledger header h2 { color: var(--gold); }
 .ledger header p { color: var(--muted); }
-.ledger ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--brass); }
-.ledger li { display: grid; grid-template-columns: 34px minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1fr) 110px; gap: 4px 18px; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
-.ledger li:hover { background: var(--panel); }
-.ledger .rank { font: 700 30px/1 var(--cond); color: var(--brass); }
+.ledger ol { list-style: none; margin: 0; padding: 0; background: var(--panel); border: 1px solid var(--line); border-top: 2px solid var(--gold); border-radius: 0 0 var(--r) var(--r); overflow: hidden; }
+.ledger li { display: grid; grid-template-columns: 30px minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1fr) 110px; gap: 4px 18px; align-items: center; padding: 13px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ledger li:last-child { border-bottom: 0; }
+.ledger li:hover { background: var(--panel2); }
+.ledger .rank { font: 700 26px/1 var(--cond); color: var(--faint); }
+.ledger li:first-child .rank { color: var(--gold); }
 .ledger .name { font: 600 22px/1.15 var(--cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
 .ledger .trade { color: var(--muted); }
 .ledger .trade b { color: var(--ink); font-weight: 600; }
 .ledger .profit { font: 700 26px/1 var(--cond); color: var(--buy); }
-.ledger .profit small { display: block; font: 400 13px/1.3 var(--text); color: var(--muted); }
+.ledger .profit small { display: block; font: 400 13px/1.3 var(--text); color: var(--muted); margin-top: 2px; }
 .ledger .vol { text-align: right; color: var(--muted); font-size: 14px; }
 @media (max-width: 760px) {
-  .ledger li { grid-template-columns: 28px 1fr auto; }
-  .ledger .trade { grid-column: 2 / 4; grid-row: 2; }
+  .ledger li { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 14px; }
+  .ledger .name { font-size: 20px; }
+  .ledger .profit { font-size: 22px; text-align: right; }
+  .ledger .trade { grid-column: 2 / 4; grid-row: 2; font-size: 14px; }
   .ledger .vol { display: none; }
 }
 
 /* board: table */
-.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-.tabs button { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
-.tabs button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); font-weight: 600; }
-.tabs .n { color: var(--muted); margin-left: 4px; }
-.tabs button[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 12px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; cursor: pointer; color: var(--muted); }
+.tabs button:hover { color: var(--ink); border-color: var(--faint); }
+.tabs button[aria-pressed="true"] { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--panel)); color: var(--ink); font-weight: 600; }
+.tabs .n { color: var(--faint); margin-left: 6px; font-weight: 400; }
+.tabs button[aria-pressed="true"] .n { color: var(--gold); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--muted); font-size: 14px; }
 .filters label { display: inline-flex; align-items: center; gap: 6px; }
-.filters input { width: 64px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; }
-.table { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+.filters input { width: 64px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.filters input:focus { border-color: var(--gold); outline: none; }
+.table { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { border-collapse: collapse; width: 100%; }
-th, td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
-th { font-weight: 500; color: var(--muted); font-size: 13.5px; position: sticky; top: 0; background: var(--panel); }
-th button { background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font-weight: inherit; }
-th[aria-sort] button { color: var(--ink); font-weight: 600; }
+th, td { padding: 9px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; letter-spacing: .5px; text-transform: uppercase; position: sticky; top: 0; background: var(--panel2); }
+th button { background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: inherit; }
+th button:hover { color: var(--ink); }
+th[aria-sort] button { color: var(--gold); font-weight: 600; }
 th.l, td.l { text-align: left; }
 td.item { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
 td.item a { text-decoration: none; font-weight: 500; }
 tbody tr { cursor: pointer; }
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--ink) 2.5%, transparent); }
 tbody tr:hover { background: var(--panel2); }
 tbody tr:last-child td { border-bottom: 0; }
+@media (max-width: 700px) { th, td { padding: 8px 10px; } td.item { max-width: 200px; } }
 .star { background: none; border: 0; cursor: pointer; padding: 2px 4px; color: var(--line); font-size: 17px; line-height: 1; }
-.star[aria-pressed="true"] { color: var(--brass); }
+.star:hover { color: var(--faint); }
+.star[aria-pressed="true"] { color: var(--gold); }
 .spark { display: block; }
-.more { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
-.btn { border: 1px solid var(--line); background: var(--panel2); border-radius: 4px; padding: 7px 14px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-.btn:hover { border-color: var(--muted); }
-.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+.more { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--panel2); border-radius: 6px; padding: 7px 14px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--gold); background: var(--panel3); }
+.empty { padding: 32px 16px; text-align: center; color: var(--muted); }
 
 /* item page */
 .back { color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; margin-bottom: 14px; }
-.back:hover { color: var(--ink); }
+.back:hover { color: var(--gold); }
 .itemhead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; justify-content: space-between; margin-bottom: 18px; }
-.itemhead h1 { font-size: 52px; letter-spacing: -.3px; }
+.itemhead h1 { font-size: clamp(32px, 7vw, 52px); letter-spacing: -.3px; display: flex; align-items: center; }
 .itemhead .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.verdict { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--brass); border-bottom: 1px solid var(--line); margin-bottom: 8px; }
-.verdict > div { padding: 14px 16px 14px 0; }
-.verdict > div + div { padding-left: 16px; border-left: 1px solid var(--line); }
-.verdict dt { color: var(--muted); font-size: 14px; }
-.verdict dd { margin: 2px 0 0; font: 700 32px/1.1 var(--cond); }
-.verdict-line { margin: 12px 0 28px; font-size: 17px; max-width: 72ch; }
-@media (max-width: 760px) { .verdict { grid-template-columns: 1fr 1fr; } .verdict > div:nth-child(3) { padding-left: 0; border-left: 0; } .itemhead h1 { font-size: 38px; } }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+.verdict { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line); border-top: 2px solid var(--gold); border-radius: 0 0 var(--r) var(--r); margin: 0 0 8px; }
+.verdict > div { padding: 14px 18px; }
+.verdict > div + div { border-left: 1px solid var(--line); }
+.verdict dt { color: var(--muted); font-size: 13px; letter-spacing: .4px; text-transform: uppercase; }
+.verdict dd { margin: 4px 0 0; font: 700 clamp(24px, 5vw, 32px)/1.1 var(--cond); }
+.verdict-line { margin: 14px 0 28px; font-size: 17px; max-width: 72ch; }
+@media (max-width: 760px) {
+  .verdict { grid-template-columns: 1fr 1fr; }
+  .verdict > div:nth-child(3) { border-left: 0; }
+  .verdict > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .verdict > div { padding: 12px 14px; }
+}
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; }
 .panel h3 { margin-bottom: 4px; }
 .panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+@media (max-width: 700px) { .panel { padding: 14px 14px; } }
 .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
 .chart { position: relative; }
 .chart svg { display: block; width: 100%; height: auto; }
 .chart text { fill: var(--muted); font: 12px var(--text); }
-.tip { position: absolute; pointer-events: none; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 13px; white-space: nowrap; transform: translate(-50%, -100%); display: none; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+.tip { position: absolute; pointer-events: none; background: var(--panel3); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px; white-space: nowrap; transform: translate(-50%, -100%); display: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; margin-top: 8px; }
 .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 .legend i.dash { background: repeating-linear-gradient(90deg, var(--buy) 0 4px, transparent 4px 7px) !important; }
@@ -149,6 +180,7 @@ dl.facts { display: grid; grid-template-columns: 1fr auto; gap: 0; margin: 0; }
 dl.facts dt, dl.facts dd { padding: 8px 0; border-bottom: 1px solid var(--line); margin: 0; }
 dl.facts dt { color: var(--muted); }
 dl.facts dd { text-align: right; font-weight: 500; }
+dl.facts dt:last-of-type, dl.facts dd:last-of-type { border-bottom: 0; }
 
 /* hour strips and heatmap */
 .strip { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; }
@@ -157,19 +189,20 @@ dl.facts dd { text-align: right; font-weight: 500; }
 .heat { display: grid; grid-template-columns: 38px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 11.5px; color: var(--muted); }
 .heat div { height: 26px; border-radius: 2px; background: var(--panel2); }
 .heat span { align-self: center; }
-.key { display: flex; gap: 18px; color: var(--muted); font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
+@media (max-width: 700px) { .heat { grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 1px; font-size: 10px; } .heat div { height: 22px; } .strip div { height: 30px; } .axis { font-size: 10px; } }
+.key { display: flex; gap: 8px 18px; color: var(--muted); font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
 .key i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
 .callout { font-size: 17px; margin-top: 16px; max-width: 72ch; }
 
 /* collector */
 .timeline { position: relative; height: 34px; border-bottom: 1px solid var(--line); margin: 6px 0 22px; }
-.timeline b { position: absolute; bottom: -5px; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--brass); }
+.timeline b { position: absolute; bottom: -5px; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--gold); }
 .timeline span { position: absolute; top: 0; font-size: 12px; color: var(--muted); transform: translateX(-50%); }
 .tl-label { font-weight: 600; margin-top: 10px; }
-/* in-game tooltip (Wowhead's Forever data), always drawn dark like the game */
-.wtt { background: #080d1c; border: 1px solid #9aa3b5; border-radius: 4px; padding: 10px 12px; color: #fff; font: 15px/1.45 var(--text); max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+/* in-game tooltip (Wowhead's Forever data), drawn like the game's own */
+.wtt { background: #0c0a07; border: 1px solid #6f6654; border-radius: 6px; padding: 10px 12px; color: #fff; font: 15px/1.45 var(--text); max-width: 360px; box-shadow: 0 12px 34px rgba(0,0,0,.6); }
 .wtt table { border-collapse: collapse; width: 100%; }
-.wtt td, .wtt th { padding: 0; border: 0; text-align: left; white-space: normal; position: static; background: none; color: inherit; font: inherit; }
+.wtt td, .wtt th { padding: 0; border: 0; text-align: left; white-space: normal; position: static; background: none; color: inherit; font: inherit; letter-spacing: 0; text-transform: none; }
 .wtt th { text-align: right; padding-left: 16px; }
 .wtt a { color: inherit; text-decoration: none; }
 .wtt a[href]:hover { text-decoration: underline; }
@@ -178,19 +211,18 @@ dl.facts dd { text-align: right; font-weight: 500; }
 .wtt .q3 { color: #0070dd; } .wtt .q4 { color: #a335ee; } .wtt .q5 { color: #ff8000; } .wtt .q6, .wtt .q7 { color: #e6cc80; }
 .wtt b { font-size: 16.5px; }
 .wtt .moneygold::after, .wtt .moneysilver::after, .wtt .moneycopper::after { content: ""; display: inline-block; width: .62em; height: .62em; border-radius: 50%; margin-left: .15em; }
-.wtt .moneygold::after { background: #e6bb52; } .wtt .moneysilver::after { background: #c9d2d6; } .wtt .moneycopper::after { background: #d08a55; }
-.wtt-wait { color: #9aa3b5; }
+.wtt .moneygold::after { background: var(--gold); } .wtt .moneysilver::after { background: var(--silver); } .wtt .moneycopper::after { background: var(--copper); }
+.wtt-wait { color: #a79d89; }
 #hovertt { position: fixed; z-index: 50; pointer-events: none; display: none; }
-.qc0 { color: #9d9d9d; } .qc1 { color: var(--ink); } .qc2 { color: #1eff00; } .qc3 { color: #2f8fe8; } .qc4 { color: #b45cf2; } .qc5 { color: #ff8000; }
-:root:not([data-theme="dark"]) .qc2 { color: #1a9e0c; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qc2 { color: #1eff00; } }
-.titleicon { width: 56px; height: 56px; border-radius: 6px; border: 2px solid var(--line); vertical-align: middle; margin-right: 14px; }
-.itemhead h1 { display: flex; align-items: center; }
+/* item quality colors, the game's own */
+.qc0 { color: #9d9d9d; } .qc1 { color: var(--ink); } .qc2 { color: #3ddc2a; } .qc3 { color: #3d95ea; } .qc4 { color: #b867f3; } .qc5 { color: #ff8a1a; }
+.titleicon { width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--line); vertical-align: middle; margin-right: 14px; flex: none; }
+@media (max-width: 700px) { .titleicon { width: 42px; height: 42px; margin-right: 10px; } }
 .itemgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
-.itemgrid .wtt { position: sticky; top: 80px; width: 340px; }
+.itemgrid .wtt { position: sticky; top: 110px; width: 340px; }
 @media (max-width: 960px) { .itemgrid { grid-template-columns: 1fr; } .itemgrid .wtt { position: static; width: auto; max-width: 420px; } }
 .hide { display: none !important; }
-@media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--brass) 25%, transparent); } } }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--gold) 25%, transparent); } } }
 </style>
 </head>
 <body>
@@ -234,6 +266,9 @@ const saveBoard = () => store.set("board", { tab: S.tab, sortKey: S.sortKey, sor
 
 // ---------- formatting ----------
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// a link to an item's page only for a real (numeric) item id; anything else is shown as plain text
+const isId = (id) => /^\d+$/.test(String(id));
+const itemA = (id, name, cls) => isId(id) ? `<a${cls ? ` class="${esc(cls)}"` : ""} href="#/item/${id}" data-tt="${id}">${esc(name)}</a>` : esc(name);
 function money(c, opt = {}) {
   if (c == null || !isFinite(c)) return '<span class="mut">no data</span>';
   const neg = c < 0; c = Math.round(Math.abs(c));
@@ -326,23 +361,31 @@ function tooltip(id) {
   }
   return ttCache.get(id);
 }
-// keep only plain markup: no scripts, no event handlers; item links open the item here, others go to Wowhead
+// Only what a tooltip needs is kept (an allowlist): these tags with these attributes. Any other tag is
+// replaced by its text, and the dangerous ones are dropped with everything in them. Item links open the
+// item here, other Wowhead links open Wowhead, any other link loses its target.
+const TT_TAGS = new Set(["TABLE", "THEAD", "TBODY", "TR", "TD", "TH", "DIV", "SPAN", "P", "BR", "B", "I", "U", "EM", "STRONG", "SMALL", "UL", "OL", "LI", "A"]);
+const TT_DROP = new Set(["SCRIPT", "STYLE", "IFRAME", "FRAME", "FRAMESET", "OBJECT", "EMBED", "IMG", "LINK", "META", "BASE", "SVG", "MATH",
+  "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT", "OPTION", "TEMPLATE", "NOSCRIPT", "VIDEO", "AUDIO", "SOURCE", "TRACK", "CANVAS", "PORTAL", "DIALOG"]);
+const TT_ATTRS = new Set(["class", "width", "colspan", "rowspan"]);
 function cleanTooltip(html) {
-  const doc = new DOMParser().parseFromString(html.replace(/<!--[\s\S]*?-->/g, ""), "text/html");
-  doc.querySelectorAll("script, style, iframe, object, embed, img, link, meta").forEach((el) => el.remove());
-  doc.querySelectorAll("*").forEach((el) => {
-    for (const a of [...el.attributes]) {
-      const n = a.name.toLowerCase();
-      if (n.startsWith("on") || n === "style" || n === "src") el.removeAttribute(a.name);
+  const doc = new DOMParser().parseFromString(String(html).replace(/<!--[\s\S]*?-->/g, ""), "text/html");
+  const clean = (parent) => {
+    for (const el of [...parent.children]) {
+      const tag = el.tagName.toUpperCase();
+      if (TT_DROP.has(tag)) { el.remove(); continue; }
+      clean(el);
+      if (!TT_TAGS.has(tag)) { el.replaceWith(...el.childNodes); continue; }
+      const href = tag === "A" ? el.getAttribute("href") || "" : null;
+      for (const a of [...el.attributes]) if (!TT_ATTRS.has(a.name.toLowerCase())) el.removeAttribute(a.name);
+      if (href !== null) {
+        const item = href.match(/^\/forever\/item=(\d+)/);
+        if (item) el.setAttribute("href", `#/item/${item[1]}`);
+        else if (/^\/(?!\/)/.test(href)) { el.setAttribute("href", `https://www.wowhead.com${href}`); el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener"); }
+      }
     }
-    if (el.tagName === "A") {
-      const href = el.getAttribute("href") || "";
-      const item = href.match(/^\/forever\/item=(\d+)/);
-      if (item) el.setAttribute("href", `#/item/${item[1]}`);
-      else if (href.startsWith("/")) { el.setAttribute("href", `https://www.wowhead.com${href}`); el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener"); }
-      else el.removeAttribute("href");
-    }
-  });
+  };
+  clean(doc.body);
   return doc.body.innerHTML;
 }
 const iconUrl = (icon) => `https://wow.zamimg.com/images/wow/icons/large/${encodeURIComponent(icon)}.jpg`;
@@ -379,7 +422,7 @@ window.addEventListener("hashchange", () => { hovId = null; clearTimeout(hovTime
 // ---------- top bar ----------
 function renderTop(page) {
   document.querySelectorAll("nav.pages a").forEach((a) => { if (a.dataset.page !== page) a.removeAttribute("aria-current"); else a.setAttribute("aria-current", "page"); });
-  $("#ah").innerHTML = realmIds.map((id) => `<button type="button" data-r="${id}" aria-pressed="${id === S.realm}">${esc(D.realms[id].label)}</button>`).join("");
+  $("#ah").innerHTML = realmIds.map((id) => `<button type="button" data-r="${esc(id)}" aria-pressed="${id === S.realm}">${esc(D.realms[id].label)}</button>`).join("");
   const R = D.realms[S.realm], st = D.status;
   const last = st.lastPoll ? Date.parse(st.lastPoll) : null;
   const late = !last || Date.now() - last > (st.intervalMin + 20) * 60000;
@@ -422,7 +465,7 @@ function sparkline(id) {
 function cell(k, r) {
   const v = r[k];
   switch (k) {
-    case "name": return `<td class="l item"><button class="star" type="button" data-star="${r.id}" aria-pressed="${S.watch.has(r.id)}" aria-label="Watch ${esc(r.name)}">★</button> <a href="#/item/${r.id}" data-tt="${r.id}">${esc(r.name)}</a></td>`;
+    case "name": return `<td class="l item"><button class="star" type="button" data-star="${esc(r.id)}" aria-pressed="${S.watch.has(r.id)}" aria-label="Watch ${esc(r.name)}">★</button> ${itemA(r.id, r.name)}</td>`;
     case "spark": return `<td class="l">${sparkline(r.id)}</td>`;
     case "minBuy": case "sell": case "market": case "hist": case "saleAvg": return `<td>${money(v)}</td>`;
     case "profit": return `<td class="${v > 0 ? "pos" : "neg"}">${money(v, { sign: true })}</td>`;
@@ -443,9 +486,9 @@ function renderBoard() {
     <section class="ledger" aria-labelledby="best">
       <header><h2 id="best">Best flips right now</h2><p>${deals.length.toLocaleString()} items on ${esc(D.realms[S.realm].label)} are listed under what they sell for</p></header>
       ${top.length ? `<ol>${top.map((r, i) => `
-        <li data-go="${r.id}">
+        <li data-go="${esc(r.id)}">
           <span class="rank">${i + 1}</span>
-          <a class="name" href="#/item/${r.id}" data-tt="${r.id}">${esc(r.name)}</a>
+          ${itemA(r.id, r.name, "name")}
           <span class="trade">Buy at <b>${money(r.minBuy)}</b>, sell at <b>${money(r.sell)}</b></span>
           <span class="profit">${money(r.profit, { sign: true })}<small>profit each, ${pct(r.margin)}</small></span>
           <span class="vol">${perDay(r.soldPerDay)} sold a day</span>
@@ -479,7 +522,7 @@ function renderTable() {
         const label = k === "spark" ? l : `<button type="button" data-sort="${k}"${COL_TIPS[k] ? ` title="${COL_TIPS[k]}"` : ""}>${l}${k === key ? (S.sortDir < 0 ? " ▾" : " ▴") : ""}</button>`;
         return `<th class="${a || ""}"${sorted} scope="col">${label}</th>`;
       }).join("")}</tr></thead>
-      <tbody>${shown.map((r) => `<tr data-go="${r.id}">${cols.map(([k]) => cell(k, r)).join("")}</tr>`).join("")}</tbody>
+      <tbody>${shown.map((r) => `<tr data-go="${esc(r.id)}">${cols.map(([k]) => cell(k, r)).join("")}</tr>`).join("")}</tbody>
     </table>
     <div class="more"><span>Showing ${shown.length.toLocaleString()} of ${list.length.toLocaleString()}</span>${list.length > shown.length ? `<button class="btn" type="button" id="moreBtn">Show ${Math.min(PAGE, list.length - shown.length)} more</button>` : ""}</div>`
     : `<p class="empty">${empty}</p>`;
@@ -492,7 +535,7 @@ function renderItem(id) {
   const deal = r.profit > 0;
   const hp = profile([id], hourOf, 24), dp = profile([id], dayOf, 7);
   const bh = bestOf(hp, HOURS);
-  const tsm = `https://tradeskillmaster.com/forever/eu/${S.realm}/items/${r.id}`;
+  const tsm = `https://tradeskillmaster.com/forever/eu/${encodeURIComponent(S.realm)}/items/${encodeURIComponent(r.id)}`;
   const verdict = r.minBuy == null ? "Nobody is selling this right now."
     : deal ? `The cheapest listing is ${pct(1 - r.minBuy / r.sell, false)} under what it sells for, so buying it and relisting at ${plain(r.sell)} makes ${plain(r.profit)} each after the auction cut.`
     : `No deal right now: the cheapest listing costs more than it reliably sells for. Wait for one under ${plain(r.buyBelow)}.`;
@@ -503,9 +546,9 @@ function renderItem(id) {
     <div class="itemhead">
       <h1 id="itemTitle">${esc(r.name)}</h1>
       <div class="actions">
-        <button class="btn" type="button" data-star="${r.id}" aria-pressed="${S.watch.has(r.id)}">${S.watch.has(r.id) ? "★ Watching" : "☆ Watch"}</button>
-        <a class="btn" href="${tsm}" target="_blank" rel="noopener">TSM page with heatmaps since launch</a>
-        <a class="btn" href="https://www.wowhead.com/forever/item=${r.id}" target="_blank" rel="noopener">Wowhead</a>
+        <button class="btn" type="button" data-star="${esc(r.id)}" aria-pressed="${S.watch.has(r.id)}">${S.watch.has(r.id) ? "★ Watching" : "☆ Watch"}</button>
+        <a class="btn" href="${esc(tsm)}" target="_blank" rel="noopener">TSM page with heatmaps since launch</a>
+        <a class="btn" href="https://www.wowhead.com/forever/item=${encodeURIComponent(r.id)}" target="_blank" rel="noopener">Wowhead</a>
       </div>
     </div>
     <dl class="verdict">
@@ -625,7 +668,7 @@ function mountChart(el, r) {
   const below = r.buyBelow > 0 ? `<line x1="${L}" x2="${W - Rm}" y1="${Y(r.buyBelow)}" y2="${Y(r.buyBelow)}" stroke="var(--buy)" stroke-dasharray="5 4" stroke-width="1.5"/>` : "";
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price history of ${esc(r.name)}">
       ${grid}${dayTicks}${below}
-      <path d="${path(b)}" fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <path d="${path(b)}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="2 4"/>
       <path d="${path(a)}" fill="none" stroke="var(--brass)" stroke-width="2.5"/>
       ${acd.map(([t, lo, hi, av]) => `<rect x="${(X(t) - 4).toFixed(1)}" y="${(Y(lo) - 4).toFixed(1)}" width="8" height="8" fill="var(--muted)" opacity="0.8"><title>Auctionator ${new Date(t * 60000).toLocaleDateString()}: lowest ${plain(lo)}, highest ${plain(hi)}${av != null ? `, ${av} up` : ""}</title></rect>`).join("")}
       ${mine.map(([t, v, q]) => `<circle cx="${X(t).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4" fill="var(--panel)" stroke="var(--brass)" stroke-width="2"><title>Your scan ${when(t * 60000)}: ${plain(v)}, ${q} listed</title></circle>`).join("")}
@@ -664,7 +707,7 @@ const KIND_LABEL = { buy: "Bought", sell: "Sold", post: "Posted", cancel: "Cance
 function trades() {
   const per = {};
   for (const e of LEDGER) {
-    const id = e.itemID != null ? String(e.itemID) : "name:" + e.name;
+    const id = isId(e.itemID) ? String(e.itemID) : "name:" + e.name;
     const p = per[id] || (per[id] = { id, name: e.name || D.names[id] || id, lots: [], bought: 0, cost: 0, sold: 0, proceeds: 0, realized: 0, cut: 0, deposits: 0, refunded: 0 });
     if (e.kind === "buy" && e.qty > 0) {
       p.lots.push({ qty: e.qty, unit: (e.price || 0) / e.qty });
@@ -766,20 +809,20 @@ function renderLedger() {
       <h3>What you hold</h3>
       <p class="sub">Bought at the auction house and not sold yet. "Sell now" means it would make 30% or more over what you paid, after the cut.</p>
       ${held.length ? `<div class="table"><table><thead><tr><th class="l">Item</th><th>Held</th><th>Paid each</th><th title="The cheapest listing now, or what it usually sells for if that's lower">Could sell at now</th><th>Gain</th><th>Signal</th></tr></thead><tbody>
-        ${held.map((p) => `<tr data-go="${/^\d+$/.test(p.id) ? p.id : ""}"><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.held}</td><td>${money(p.avg)}</td><td>${money(p.now)}</td><td class="${p.gain >= 0 ? "pos" : "neg"}">${pct(p.gain)}</td><td>${verdict(p)}</td></tr>`).join("")}
+        ${held.map((p) => `<tr data-go="${/^\d+$/.test(p.id) ? p.id : ""}"><td class="l item">${itemA(p.id, p.name)}</td><td>${p.held}</td><td>${money(p.avg)}</td><td>${money(p.now)}</td><td class="${p.gain >= 0 ? "pos" : "neg"}">${pct(p.gain)}</td><td>${verdict(p)}</td></tr>`).join("")}
       </tbody></table></div>` : `<p class="empty">Nothing held. Items you buy at the auction house show up here.</p>`}
     </section>
     <section class="panel" style="margin-top:16px">
       <h3>Profit per item</h3>
       <p class="sub">Sales matched to what you paid, oldest first.</p>
       ${per.some((p) => p.sold) ? `<div class="table"><table><thead><tr><th class="l">Item</th><th>Bought</th><th>Sold</th><th>Paid</th><th>Got after the cut</th><th>Profit</th></tr></thead><tbody>
-        ${per.filter((p) => p.sold).sort((a, b) => b.realized - a.realized).map((p) => `<tr><td class="l item"><a href="#/item/${p.id}" data-tt="${p.id}">${esc(p.name)}</a></td><td>${p.bought}</td><td>${p.sold}</td><td>${money(p.cost)}</td><td>${money(p.proceeds)}</td><td class="${p.realized >= 0 ? "pos" : "neg"}">${money(p.realized, { sign: true })}</td></tr>`).join("")}
+        ${per.filter((p) => p.sold).sort((a, b) => b.realized - a.realized).map((p) => `<tr><td class="l item">${itemA(p.id, p.name)}</td><td>${p.bought}</td><td>${p.sold}</td><td>${money(p.cost)}</td><td>${money(p.proceeds)}</td><td class="${p.realized >= 0 ? "pos" : "neg"}">${money(p.realized, { sign: true })}</td></tr>`).join("")}
       </tbody></table></div>` : `<p class="empty">No sales recorded yet.</p>`}
     </section>
     <section class="panel" style="margin-top:16px">
       <h3>Recent activity</h3>
       <div class="table"><table><thead><tr><th class="l">When</th><th class="l">What</th><th class="l">Item</th><th>Qty</th><th>Price</th><th class="l">Character</th></tr></thead><tbody>
-        ${LEDGER.slice(-60).reverse().map((e) => `<tr><td class="l">${when(e.t * 1000)}</td><td class="l">${KIND_LABEL[e.kind] || e.kind}</td><td class="l item">${e.itemID ? `<a href="#/item/${e.itemID}" data-tt="${e.itemID}">${esc(e.name || D.names[e.itemID] || e.itemID)}</a>` : esc(e.name || "?")}</td><td>${e.qty ?? ""}</td><td>${e.kind === "sell" ? money((e.price || 0) - (e.cut || 0)) : money(e.price)}</td><td class="l mut">${esc((e.char || "").split("-")[0])}</td></tr>`).join("")}
+        ${LEDGER.slice(-60).reverse().map((e) => `<tr><td class="l">${when(e.t * 1000)}</td><td class="l">${KIND_LABEL[e.kind] || e.kind}</td><td class="l item">${isId(e.itemID) ? itemA(e.itemID, e.name || D.names[e.itemID] || e.itemID) : esc(e.name || "?")}</td><td>${e.qty ?? ""}</td><td>${e.kind === "sell" ? money((e.price || 0) - (e.cut || 0)) : money(e.price)}</td><td class="l mut">${esc((e.char || "").split("-")[0])}</td></tr>`).join("")}
       </tbody></table></div>
     </section>`;
   lineChart($("#goldChart"), g, "Gold over time");
@@ -905,7 +948,7 @@ function suggest() {
   const t = q.value.trim().toLowerCase();
   matches = t ? rows().filter((r) => r.name.toLowerCase().includes(t)).sort((a, b) => (a.name.toLowerCase().startsWith(t) ? 0 : 1) - (b.name.toLowerCase().startsWith(t) ? 0 : 1) || (b.soldPerDay || 0) - (a.soldPerDay || 0)).slice(0, 8) : [];
   sel = matches.length ? 0 : -1;
-  sug.innerHTML = matches.map((r, i) => `<li role="option" id="opt${i}" aria-selected="${i === sel}" data-id="${r.id}" data-tt="${r.id}"><span>${esc(r.name)}</span>${money(r.minBuy)}</li>`).join("");
+  sug.innerHTML = matches.map((r, i) => `<li role="option" id="opt${i}" aria-selected="${i === sel}" data-id="${esc(r.id)}" data-tt="${esc(r.id)}"><span>${esc(r.name)}</span>${money(r.minBuy)}</li>`).join("");
   sug.classList.toggle("open", matches.length > 0);
   q.setAttribute("aria-expanded", matches.length > 0);
 }

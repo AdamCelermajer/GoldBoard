@@ -19,6 +19,7 @@ const DATA = path.join(ROOT, "data");
 const SNAP = path.join(DATA, "snapshots");
 const POLLS = path.join(DATA, "polls.jsonl");
 const STATE = path.join(DATA, "state.json");
+const LOCK = path.join(DATA, "collect.lock");
 const TASK = "TSM Forever Collector";
 const BASE = "https://public-data.tradeskillmaster.com/forever/eu";
 
@@ -123,8 +124,49 @@ function maybeAdjustInterval(state) {
   } else log(`cadence: TSM refreshes about every ${Math.round(median)} min, keeping ${interval} min`);
 }
 
+// One collect run at a time (the scheduled task and the dashboard's rebuild after a /reload can meet):
+// the later one waits for the lock. A lock whose run is gone, or older than LOCK_STALE, is taken over.
+const LOCK_STALE = 10 * 60 * 1000;
+const pidAlive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
+function tryLock() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      fs.writeFileSync(LOCK, JSON.stringify({ pid: process.pid, t: Date.now() }), { flag: "wx" });
+      return true;
+    } catch (e) { if (e.code !== "EEXIST") throw e; }
+    let held = {}, age = 0;
+    try { held = JSON.parse(fs.readFileSync(LOCK, "utf8")); } catch {}
+    try { age = Date.now() - fs.statSync(LOCK).mtimeMs; } catch { continue; }   // just released: try again
+    // held by a live run; a fresh lock not yet readable is one being written right now
+    if (age < LOCK_STALE && (held.pid ? pidAlive(held.pid) : age < 5000)) return false;
+    try { fs.unlinkSync(LOCK); } catch {}
+  }
+  return false;
+}
+async function lock(waitMs) {
+  const until = Date.now() + waitMs;
+  while (!tryLock()) {
+    if (Date.now() > until) return false;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return true;
+}
+function unlock() {
+  try { if (JSON.parse(fs.readFileSync(LOCK, "utf8")).pid === process.pid) fs.unlinkSync(LOCK); } catch {}
+}
+module.exports.lock = lock;
+module.exports.unlock = unlock;
+
 async function main() {
   fs.mkdirSync(SNAP, { recursive: true });
+  if (!(await lock(process.argv.includes("--build") ? 3 * 60 * 1000 : 10 * 60 * 1000))) {
+    log("another collect run is still busy: this one is skipped");
+    return;
+  }
+  process.on("exit", unlock);
+  try { await run(); } finally { unlock(); }
+}
+async function run() {
   const state = readState();
   if (!process.argv.includes("--build")) {
     await poll(state);

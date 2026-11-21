@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: Gold Board
 ## Notes: Auction house companion for WoW Forever: a ledger of your gold, buys and sales, TSM-style posting, cancelling and deal shopping priced by the Gold Board dashboard, side by side with Auctionator.
-## Version: 2.0.0
+## Version: 2.3.4
 ## Author: Gold Board
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
 ## SavedVariables: GoldBoardDB

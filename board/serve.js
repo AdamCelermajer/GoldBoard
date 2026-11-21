@@ -31,7 +31,7 @@ server.on("error", (e) => {
   } else throw e;
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "127.0.0.1", () => {   // this computer only, not the network
   console.log("Forever Gold Board");
   console.log(`  dashboard: ${URL}  (reloads itself when new prices arrive)`);
   console.log(`  collecting: scheduled task "TSM Forever Collector", runs even with this window closed`);
@@ -63,6 +63,17 @@ function watchGame() {
   const wow = require("./wow.js");
   const { execFile } = require("child_process");
   const seen = {};
+  // one rebuild at a time: a save during a rebuild is picked up by one more rebuild right after it
+  let building = false, again = false;
+  const rebuild = () => {
+    if (building) { again = true; return; }
+    building = true;
+    execFile(process.execPath, [path.join(__dirname, "collect.js"), "--build"], { cwd: __dirname, windowsHide: true }, (err) => {
+      building = false;
+      if (err) console.log("  rebuild failed: " + err.message);
+      if (again) { again = false; rebuild(); }
+    });
+  };
   const check = () => {
     for (const f of wow.savedVariables("GoldBoard")) {
       let m = 0;
@@ -71,8 +82,7 @@ function watchGame() {
       if (m !== seen[f]) {
         seen[f] = m;
         console.log(`  ${new Date().toISOString()} game data saved: updating the Ledger`);
-        execFile(process.execPath, [path.join(__dirname, "collect.js"), "--build"], { cwd: __dirname, windowsHide: true },
-          (err) => { if (err) console.log("  rebuild failed: " + err.message); });
+        rebuild();
       }
     }
   };

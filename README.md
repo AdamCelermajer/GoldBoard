@@ -3,7 +3,7 @@
 A gold-making companion for **WoW Forever**, in two parts that work together:
 
 - **`GoldBoard/`** is the in-game addon, a TSM-style companion that runs alongside Auctionator:
-  - **`/gb` window:** gold over time, **Deals** (what's worth buying, its trend and the cheapest hour to buy), **What I hold** (what it would make now, sell or hold, and when to sell it) and a **Ledger** of every buy, sale, post, cancel and expiry.
+  - **`/gb` window:** **Deals** (what's worth buying, its trend and the cheapest hour to buy), **When to sell** (what you hold, what it would make now, sell or hold, and its best hour), an **Overview** (deals and items to sell at a glance, gold over time) and a **Ledger** of every buy, sale, post, cancel and expiry.
   - **Beside the auction house:** **Shop** (deals under your buy-below price, any item's live listings, buy the exact listing you pick), **Sell** (checks your bags: *Sell now*, *Wait* until its dearer hour, or *Hold* while it's being dumped, priced to undercut the cheapest but never under 80% of the usual price; one click posts the next), **Cancel** (finds your auctions someone undercut; one click cancels the next).
   - It keeps a copy of each Auctionator full scan and hands Auctionator's daily price history to the dashboard. Item tooltips get one "Auction price" line (Auctionator's own price line is switched off once).
 - **`board/`** runs on your PC. Every few hours it downloads TradeSkillMaster's free public price files for your auction houses, keeps every version, and builds a local dashboard: deals, price history per item, cheap and expensive hours, your ledger and holdings. It writes the signals the addon shows in game.
